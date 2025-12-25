@@ -1,0 +1,131 @@
+<!-- index.html (Dashboard) - Updated to use fetchAllData and remove multiple requests -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="/favicon" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Harmony Hub | Dashboard</title>
+    <link rel="stylesheet" href="style">
+    <script src="/thirdParty/3.4.17"></script>
+    <script src="/thirdParty/feather.min"></script>
+</head>
+<body class="bg-gray-50">
+    <custom-navbar></custom-navbar>
+<main class="container mx-auto px-4 py-8">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Penalties Card -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-700">Штрафы</h2>
+                    <i data-feather="alert-triangle" class="text-red-500"></i>
+                </div>
+                <div class="text-3xl font-bold text-red-600" id="penalties-count">0</div>
+                <p class="text-gray-500 mt-2">За месяц</p>
+            </div>
+            
+            <!-- Bonuses Card -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-700">Бонусы</h2>
+                    <i data-feather="gift" class="text-green-500"></i>
+                </div>
+                <div class="text-3xl font-bold text-green-600" id="bonuses-count">0</div>
+                <p class="text-gray-500 mt-2">За месяц</p>
+            </div>
+            
+            <!-- Undertime Card -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-700">Недоработка</h2>
+                    <i data-feather="clock" class="text-yellow-500"></i>
+                </div>
+                <div class="text-3xl font-bold text-yellow-600" id="undertime-count">0</div>
+                <p class="text-gray-500 mt-2">Часов за месяц</p>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">Быстрые действия</h2>
+                <a href="employees" class="text-blue-500 hover:text-blue-700 flex items-center">
+                    <span>Показать все</span>
+                    <i data-feather="chevron-right" class="ml-1 w-4 h-4"></i>
+                </a>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <a href="salary" class="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                    <div class="flex items-center">
+                        <div class="bg-green-100 p-3 rounded-full mr-4">
+                            <i data-feather="dollar-sign" class="text-green-500"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-medium">Зарплаты</h3>
+                            <p class="text-sm text-gray-500">Перейти к управлению зарплатой</p>
+                        </div>
+                    </div>
+                </a>
+                
+                <a href="hours" class="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                    <div class="flex items-center">
+                        <div class="bg-blue-100 p-3 rounded-full mr-4">
+                            <i data-feather="clock" class="text-blue-500"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-medium">Отработанные часы</h3>
+                            <p class="text-sm text-gray-500">Просмотр учёта часов</p>
+                        </div>
+                    </div>
+                </a>
+                
+                <a href="employees?status=interview" class="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                    <div class="flex items-center">
+                        <div class="bg-blue-100 p-3 rounded-full mr-4">
+                            <i data-feather="users" class="text-blue-500"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-medium">Interviews</h3>
+                            <p class="text-sm text-gray-500">Candidates in process</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </main>
+    
+    <custom-footer></custom-footer>
+    <!-- Components -->
+    <script src="components/navbar"></script>
+<script src="components/footer"></script>
+<!-- Scripts -->
+    <script src="modules/dataCache"></script> <!-- Note: Updated to dataCache -->
+    <script>
+        feather.replace();
+        
+        let dashboardLoadingPromise = null;
+        
+        async function updateDashboard(force = false) {
+            if (dashboardLoadingPromise) return dashboardLoadingPromise;
+            
+            dashboardLoadingPromise = (async () => {
+                try {
+                    const { dashboard } = await window.dataCache.fetchAllData(force);
+                    document.getElementById('penalties-count').textContent = dashboard.penalties;
+                    document.getElementById('bonuses-count').textContent = dashboard.bonuses;
+                    document.getElementById('undertime-count').textContent = dashboard.undertime.toFixed(1);
+                } finally {
+                    dashboardLoadingPromise = null;
+                }
+            })();
+            return dashboardLoadingPromise;
+        }
+        
+        // Initialize dashboard data
+        document.addEventListener('DOMContentLoaded', () => updateDashboard());
+        
+        // Listen for cache updates and refresh dashboard
+        window.addEventListener('dataCache:updated', () => updateDashboard(true));
+    </script>
+</body>
+</html>
