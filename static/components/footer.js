@@ -103,18 +103,6 @@ class CustomFooter extends HTMLElement {
           width: 100%;
         }
 
-        /* Shine-эффект при наведении на весь футер */
-        footer::after {
-          content: '';
-          position: absolute;
-          top: 0; left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-          transition: left 1s ease;
-          pointer-events: none;
-        }
-
         footer:hover::after {
           left: 100%;
         }
