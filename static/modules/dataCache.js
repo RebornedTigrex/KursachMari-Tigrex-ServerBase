@@ -72,11 +72,35 @@ class DataCache {
 
             if (!res.ok) {
                 const text = await res.text();
-                throw { status: res.status, statusText: res.statusText, body: text };
+                const error = { status: res.status, statusText: res.statusText, body: text };
+
+                // Специальная обработка 503 — сервер недоступен
+                if (res.status === 503) {
+                    if (window.notifications) {
+                        window.notifications.showWarning(
+                            '🔌 Сервер временно недоступен.<br>Приложение переключилось в оффлайн-режим — используются локальные данные.',
+                            10000
+                        );
+                    }
+                    // Не бросаем ошибку дальше — позволяем работать с кэшем
+                    return null;
+                }
+
+                throw error;
             }
 
             return await res.json();
         } catch (err) {
+            // Сетевые ошибки (нет интернета) тоже переводим в warning
+            if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
+                if (window.notifications) {
+                    window.notifications.showWarning(
+                        '🌐 Нет соединения с интернетом.<br>Работаем с локальным кэшем.',
+                        10000
+                    );
+                }
+                return null; // Не бросаем — продолжаем с кэшем
+            }
             throw err;
         }
     }
