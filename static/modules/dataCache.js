@@ -1,14 +1,18 @@
-// modules/dataCache.js - Improved Data Cache Module with proper error propagation for notifications
+// modules/dataCache.js - Переработанный Data Cache Module для веб-приложения рекламного агентства
+// Основные сущности: Клиенты, Кампании, Задачи, Команда (сотрудники), Метрики/Отчеты
+// Добавлены полноценные CRUD-методы с optimistic updates и proper error propagation
+// Поддержка дашборда с ключевыми метриками агентства (активные кампании, бюджет, ROI и т.д.)
 
 class DataCache {
     constructor(options = {}) {
-        this.storageKey = options.storageKey || 'hr_data_cache_v1';
+        this.storageKey = options.storageKey || 'ad_agency_cache_v1';
         this.cache = {
             dashboard: null,
-            employees: [],
-            hours: [], // Array of {employeeId, regularHours, overtime, undertime}
-            penalties: [], // Array of {id, employeeId, reason, amount, date}
-            bonuses: [], // Array of {id, employeeId, note, amount, date}
+            clients: [],          // Array of {id, name, contact, status, totalBudget, campaignsCount}
+            campaigns: [],        // Array of {id, clientId, name, status, budget, spent, startDate, endDate, roi}
+            tasks: [],            // Array of {id, campaignId, assigneeId, title, description, status, dueDate}
+            team: [],             // Array of {id, fullname, role, workload} // workload - % загруженности
+            metrics: [],          // Дополнительные метрики по кампаниям
             lastUpdated: null
         };
 
@@ -18,7 +22,7 @@ class DataCache {
         this._loadFromStorage();
     }
 
-    // --- Persistence helpers ---
+    // --- Persistence helpers (без изменений) ---
     _loadFromStorage() {
         if (!this.enablePersistence) return;
         try {
@@ -46,7 +50,7 @@ class DataCache {
         this._saveToStorage();
         try {
             window.dispatchEvent(new CustomEvent('dataCache:updated', { detail: { lastUpdated: this.cache.lastUpdated } }));
-        } catch (e) {}
+        } catch (e) { }
     }
 
     _isCacheExpired() {
@@ -54,16 +58,14 @@ class DataCache {
         const now = new Date();
         const last = new Date(this.cache.lastUpdated);
         const diffInMinutes = (now - last) / (1000 * 60);
-        return diffInMinutes > 5; // 5-minute cache TTL
+        return diffInMinutes > 5; // 5-minute TTL
     }
 
-    // --- Network helper with structured error object ---
+    // --- Network helper (без изменений) ---
     async _syncToServer(method, path, body, options = {}) {
         try {
             const url = `${this.apiBaseUrl}${path}`;
             const headers = { 'Content-Type': 'application/json' };
-            // Placeholder for future auth
-            // headers['Authorization'] = 'Bearer ' + localStorage.getItem('authToken');
 
             const res = await fetch(url, {
                 method,
@@ -73,13 +75,13 @@ class DataCache {
             });
 
             if (!res.ok) {
-                const text = await res.text(); // Получаем тело ответа (обычно JSON с ошибкой)
+                const text = await res.text();
                 const error = {
                     status: res.status,
                     statusText: res.statusText,
                     body: text
                 };
-                throw error; // Структурированная ошибка для notifications.js
+                throw error;
             }
 
             const data = await res.json();
@@ -89,7 +91,6 @@ class DataCache {
             }
             return data;
         } catch (err) {
-            // Сетевые ошибки (нет соединения и т.п.) тоже пробрасываем
             throw err;
         }
     }
@@ -111,6 +112,7 @@ class DataCache {
             const serverData = await this._syncToServer('GET', '/all-data');
             if (serverData) {
                 this.cache = { ...this.cache, ...serverData };
+                this._computeDashboard();
                 this._markUpdated();
                 return this.cache;
             }
@@ -118,36 +120,47 @@ class DataCache {
             console.warn('Using local cache due to network error:', err);
         }
 
-        // Mock/fallback only if cache is empty
-        if (!this.cache.employees.length) {
-            this.cache.employees = [
-                { id: 1, fullname: 'John Doe', status: 'hired', salary: 50000, penalties: 2, bonuses: 1, totalPenalties: 400, totalBonuses: 500 },
-                { id: 2, fullname: 'Jane Smith', status: 'hired', salary: 65000, penalties: 0, bonuses: 3, totalPenalties: 0, totalBonuses: 1500 },
-                { id: 3, fullname: 'Mike Johnson', status: 'fired', salary: 45000, penalties: 5, bonuses: 0, totalPenalties: 1000, totalBonuses: 0 },
-                { id: 4, fullname: 'Sarah Williams', status: 'interview', salary: 55000, penalties: 0, bonuses: 0, totalPenalties: 0, totalBonuses: 0 }
-            ];
-            this.cache.hours = [
-                { employeeId: 1, regularHours: 160, overtime: 10, undertime: 2 },
-                { employeeId: 2, regularHours: 160, overtime: 5, undertime: 0 },
-                { employeeId: 3, regularHours: 120, overtime: 0, undertime: 40 },
-                { employeeId: 4, regularHours: 0, overtime: 0, undertime: 0 }
-            ];
-            this.cache.penalties = [];
-            this.cache.bonuses = [];
-            this._computeDashboard();
+        // Fallback mock data если кэш пуст
+        if (!this.cache.clients.length) {
+            this._loadMockData();
         }
+        this._computeDashboard();
         this._markUpdated();
         return this.cache;
     }
 
+    _loadMockData() {
+        this.cache.clients = [
+            { id: 1, name: 'Компания А', contact: 'Иван Иванов', status: 'active', totalBudget: 500000, campaignsCount: 3 },
+            { id: 2, name: 'Бренд Б', contact: 'Мария Петрова', status: 'active', totalBudget: 300000, campaignsCount: 2 },
+            { id: 3, name: 'Стартап В', contact: 'Алексей Сидоров', status: 'prospect', totalBudget: 0, campaignsCount: 0 }
+        ];
+        this.cache.campaigns = [
+            { id: 1, clientId: 1, name: 'Летняя акция', status: 'running', budget: 200000, spent: 120000, startDate: '2025-06-01', endDate: '2025-09-01', roi: 2.4 },
+            { id: 2, clientId: 1, name: 'SMM продвижение', status: 'planning', budget: 150000, spent: 0, startDate: '2025-12-01', endDate: '2026-03-01', roi: null }
+        ];
+        this.cache.tasks = [
+            { id: 1, campaignId: 1, assigneeId: 1, title: 'Создать баннеры', description: '', status: 'in_progress', dueDate: '2025-12-30' }
+        ];
+        this.cache.team = [
+            { id: 1, fullname: 'Анна Креатив', role: 'Дизайнер', workload: 85 },
+            { id: 2, fullname: 'Дмитрий Таргетолог', role: 'Специалист по рекламе', workload: 70 }
+        ];
+    }
+
     _computeDashboard() {
-        const hiredEmployees = this.cache.employees.filter(e => e.status === 'hired');
+        const activeCampaigns = this.cache.campaigns.filter(c => c.status === 'running');
+        const totalBudget = activeCampaigns.reduce((sum, c) => sum + c.budget, 0);
+        const totalSpent = activeCampaigns.reduce((sum, c) => sum + c.spent, 0);
+        const avgRoi = activeCampaigns.filter(c => c.roi).reduce((sum, c) => sum + c.roi, 0) / activeCampaigns.filter(c => c.roi).length || 0;
+
         this.cache.dashboard = {
-            penalties: hiredEmployees.reduce((sum, e) => sum + (e.penalties || 0), 0),
-            bonuses: hiredEmployees.reduce((sum, e) => sum + (e.bonuses || 0), 0),
-            undertime: this.cache.hours
-                .filter(h => hiredEmployees.some(e => e.id === h.employeeId))
-                .reduce((sum, h) => sum + (h.undertime || 0), 0)
+            activeClients: this.cache.clients.filter(cl => cl.status === 'active').length,
+            activeCampaigns: activeCampaigns.length,
+            totalBudget,
+            totalSpent,
+            avgRoi: avgRoi.toFixed(2),
+            teamWorkload: Math.round(this.cache.team.reduce((sum, t) => sum + t.workload, 0) / this.cache.team.length || 0)
         };
     }
 
@@ -156,144 +169,299 @@ class DataCache {
         return this.cache.dashboard;
     }
 
-    async getEmployees() {
+    async getClients() {
         await this.fetchAllData();
-        return this.cache.employees;
+        return this.cache.clients;
     }
 
-    async getHoursForEmployee(employeeId) {
+    async getCampaigns(clientId = null) {
         await this.fetchAllData();
-        return this.cache.hours.find(h => h.employeeId === employeeId) || { employeeId, regularHours: 0, overtime: 0, undertime: 0 };
+        if (clientId) return this.cache.campaigns.filter(c => c.clientId === clientId);
+        return this.cache.campaigns;
     }
 
-    // ---------- CRUD operations with proper error propagation ----------
-    async addEmployee(employeeData) {
-        const payloadForServer = {
-            fullname: employeeData.fullname.trim(),
-            status: employeeData.status || 'interview',
-            salary: Number(employeeData.salary)
-        };
+    async getTasks(campaignId = null) {
+        await this.fetchAllData();
+        if (campaignId) return this.cache.tasks.filter(t => t.campaignId === campaignId);
+        return this.cache.tasks;
+    }
 
+    async getTeam() {
+        await this.fetchAllData();
+        return this.cache.team;
+    }
+
+    // ---------- CRUD для Клиентов ----------
+    async addClient(clientData) {
         const tempId = Date.now();
-        const newEmployee = {
+        const newClient = { id: tempId, status: 'prospect', campaignsCount: 0, totalBudget: 0, ...clientData };
+
+        this.cache.clients.push(newClient);
+        this._computeDashboard();
+        this._markUpdated();
+
+        try {
+            const serverResp = await this._syncToServer('POST', '/clients', clientData);
+            if (serverResp && serverResp.id) {
+                const idx = this.cache.clients.findIndex(c => c.id === tempId);
+                if (idx !== -1) this.cache.clients[idx] = { ...this.cache.clients[idx], ...serverResp };
+            }
+            await this.fetchAllData(true);
+        } catch (error) {
+            throw error; // Для notifications.js
+        }
+        return newClient;
+    }
+
+    async updateClient(clientId, changes) {
+        const client = this.cache.clients.find(c => c.id === clientId);
+        if (!client) throw new Error('Client not found');
+
+        Object.assign(client, changes);
+        this._computeDashboard();
+        this._markUpdated();
+
+        try {
+            await this._syncToServer('PUT', `/clients/${clientId}`, client);
+            await this.fetchAllData(true);
+        } catch (error) {
+            throw error;
+        }
+        return client;
+    }
+
+    async deleteClient(clientId) {
+        const idx = this.cache.clients.findIndex(c => c.id === clientId);
+        if (idx === -1) throw new Error('Client not found');
+
+        this.cache.clients.splice(idx, 1);
+        this.cache.campaigns = this.cache.campaigns.filter(c => c.clientId !== clientId);
+        this.cache.tasks = this.cache.tasks.filter(t => this.cache.campaigns.some(camp => camp.id === t.campaignId)); // Каскадно
+        this._computeDashboard();
+        this._markUpdated();
+
+        try {
+            await this._syncToServer('DELETE', `/clients/${clientId}`);
+            await this.fetchAllData(true);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // ---------- CRUD для Кампаний ----------
+    async addCampaign(campaignData) {
+        const tempId = Date.now();
+        const newCampaign = { id: tempId, status: 'planning', spent: 0, roi: null, ...campaignData };
+
+        this.cache.campaigns.push(newCampaign);
+        const client = this.cache.clients.find(c => c.id === campaignData.clientId);
+        if (client) {
+            client.campaignsCount += 1;
+            client.totalBudget += campaignData.budget || 0;
+        }
+        this._computeDashboard();
+        this._markUpdated();
+
+        try {
+            const serverResp = await this._syncToServer('POST', '/campaigns', campaignData);
+            if (serverResp && serverResp.id) {
+                const idx = this.cache.campaigns.findIndex(c => c.id === tempId);
+                if (idx !== -1) this.cache.campaigns[idx] = { ...this.cache.campaigns[idx], ...serverResp };
+            }
+            await this.fetchAllData(true);
+        } catch (error) {
+            throw error;
+        }
+        return newCampaign;
+    }
+
+    async updateCampaign(campaignId, changes) {
+        const campaign = this.cache.campaigns.find(c => c.id === campaignId);
+        if (!campaign) throw new Error('Campaign not found');
+
+        Object.assign(campaign, changes);
+        this._computeDashboard();
+        this._markUpdated();
+
+        try {
+            await this._syncToServer('PUT', `/campaigns/${campaignId}`, campaign);
+            await this.fetchAllData(true);
+        } catch (error) {
+            throw error;
+        }
+        return campaign;
+    }
+
+    async deleteCampaign(campaignId) {
+        const idx = this.cache.campaigns.findIndex(c => c.id === campaignId);
+        if (idx === -1) throw new Error('Campaign not found');
+
+        const clientId = this.cache.campaigns[idx].clientId;
+        this.cache.campaigns.splice(idx, 1);
+        this.cache.tasks = this.cache.tasks.filter(t => t.campaignId !== campaignId);
+
+        const client = this.cache.clients.find(c => c.id === clientId);
+        if (client) client.campaignsCount = Math.max(0, client.campaignsCount - 1);
+
+        this._computeDashboard();
+        this._markUpdated();
+
+        try {
+            await this._syncToServer('DELETE', `/campaigns/${campaignId}`);
+            await this.fetchAllData(true);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // ---------- CRUD для Задач ----------
+    async addTask(taskData) {
+        const tempId = Date.now();
+        const newTask = {
             id: tempId,
-            ...payloadForServer,
-            penalties: 0,
-            bonuses: 0,
-            totalPenalties: 0,
-            totalBonuses: 0
+            status: 'todo', // по умолчанию
+            ...taskData
         };
 
-        // Optimistic UI update
-        this.cache.employees.push(newEmployee);
-        this.cache.hours.push({ employeeId: tempId, regularHours: 0, overtime: 0, undertime: 0 });
+        this.cache.tasks.push(newTask);
         this._computeDashboard();
         this._markUpdated();
 
         try {
-            const serverResp = await this._syncToServer('POST', '/employees', payloadForServer);
-
+            const serverResp = await this._syncToServer('POST', '/tasks', taskData);
             if (serverResp && serverResp.id) {
-                const empIdx = this.cache.employees.findIndex(e => e.id === tempId);
-                if (empIdx !== -1) {
-                    this.cache.employees[empIdx] = { ...this.cache.employees[empIdx], ...serverResp };
-                }
-                const hoursIdx = this.cache.hours.findIndex(h => h.employeeId === tempId);
-                if (hoursIdx !== -1) {
-                    this.cache.hours[hoursIdx].employeeId = serverResp.id;
-                }
-                await this.fetchAllData(true);
+                const idx = this.cache.tasks.findIndex(t => t.id === tempId);
+                if (idx !== -1) this.cache.tasks[idx] = { ...this.cache.tasks[idx], ...serverResp };
             }
-        } catch (error) {
-            // Пробрасываем ошибку дальше — обработается в UI (notifications)
-            throw error;
-        }
-
-        return newEmployee;
-    }
-
-    async updateEmployee(employeeId, changes) {
-        const emp = this.cache.employees.find(e => e.id === employeeId);
-        if (!emp) throw new Error('Employee not found');
-
-        Object.assign(emp, changes);
-        this._computeDashboard();
-        this._markUpdated();
-
-        try {
-            await this._syncToServer('PUT', `/employees/${employeeId}`, emp);
             await this.fetchAllData(true);
         } catch (error) {
             throw error;
         }
-
-        return emp;
+        return newTask;
     }
 
-    async addHours(employeeId, hoursData) {
-        let existing = this.cache.hours.find(h => h.employeeId === employeeId);
-        if (existing) {
-            existing.regularHours = Number(hoursData.regularHours ?? existing.regularHours);
-            existing.overtime = Number(hoursData.overtime ?? existing.overtime);
-            existing.undertime = Number(hoursData.undertime ?? existing.undertime);
-        } else {
-            existing = { employeeId, ...hoursData };
-            this.cache.hours.push(existing);
-        }
+    async updateTask(taskId, changes) {
+        const task = this.cache.tasks.find(t => t.id === taskId);
+        if (!task) throw new Error('Task not found');
+
+        Object.assign(task, changes);
         this._computeDashboard();
         this._markUpdated();
 
         try {
-            await this._syncToServer('POST', `/hours/${employeeId}`, existing);
+            await this._syncToServer('PUT', `/tasks/${taskId}`, task);
+            await this.fetchAllData(true);
+        } catch (error) {
+            throw error;
+        }
+        return task;
+    }
+
+    async deleteTask(taskId) {
+        const idx = this.cache.tasks.findIndex(t => t.id === taskId);
+        if (idx === -1) throw new Error('Task not found');
+
+        this.cache.tasks.splice(idx, 1);
+        this._computeDashboard();
+        this._markUpdated();
+
+        try {
+            await this._syncToServer('DELETE', `/tasks/${taskId}`);
             await this.fetchAllData(true);
         } catch (error) {
             throw error;
         }
     }
 
-    async addPenalty(employeeId, penaltyData) {
-        const penalty = { id: Date.now(), employeeId, ...penaltyData, date: new Date().toISOString() };
-        this.cache.penalties.push(penalty);
+    // ---------- CRUD для Команды (Сотрудников агентства) ----------
+    async addTeamMember(memberData) {
+        const tempId = Date.now();
+        const newMember = {
+            id: tempId,
+            workload: 0, // по умолчанию
+            ...memberData
+        };
 
-        const employee = this.cache.employees.find(e => e.id === employeeId);
-        if (employee) {
-            employee.penalties = (employee.penalties || 0) + 1;
-            employee.totalPenalties = (employee.totalPenalties || 0) + (penalty.amount || 0);
-        }
+        this.cache.team.push(newMember);
         this._computeDashboard();
         this._markUpdated();
 
         try {
-            await this._syncToServer('POST', `/employees/${employeeId}/penalties`, penalty);
+            const serverResp = await this._syncToServer('POST', '/team', memberData);
+            if (serverResp && serverResp.id) {
+                const idx = this.cache.team.findIndex(m => m.id === tempId);
+                if (idx !== -1) this.cache.team[idx] = { ...this.cache.team[idx], ...serverResp };
+            }
+            await this.fetchAllData(true);
+        } catch (error) {
+            throw error;
+        }
+        return newMember;
+    }
+
+    async updateTeamMember(memberId, changes) {
+        const member = this.cache.team.find(m => m.id === memberId);
+        if (!member) throw new Error('Team member not found');
+
+        Object.assign(member, changes);
+        this._computeDashboard();
+        this._markUpdated();
+
+        try {
+            await this._syncToServer('PUT', `/team/${memberId}`, member);
+            await this.fetchAllData(true);
+        } catch (error) {
+            throw error;
+        }
+        return member;
+    }
+
+    async deleteTeamMember(memberId) {
+        const idx = this.cache.team.findIndex(m => m.id === memberId);
+        if (idx === -1) throw new Error('Team member not found');
+
+        // Удаляем назначенные задачи (опционально: можно переназначить, но для MVP просто удаляем)
+        this.cache.tasks = this.cache.tasks.filter(t => t.assigneeId !== memberId);
+
+        this.cache.team.splice(idx, 1);
+        this._computeDashboard();
+        this._markUpdated();
+
+        try {
+            await this._syncToServer('DELETE', `/team/${memberId}`);
             await this.fetchAllData(true);
         } catch (error) {
             throw error;
         }
     }
 
-    async addBonus(employeeId, bonusData) {
-        const bonus = { id: Date.now(), employeeId, ...bonusData, date: new Date().toISOString() };
-        this.cache.bonuses.push(bonus);
+    // Дополнительные удобные методы (не CRUD, но полезны для UI)
+    async getTasksForCampaign(campaignId) {
+        await this.fetchAllData();
+        return this.cache.tasks.filter(t => t.campaignId === campaignId);
+    }
 
-        const employee = this.cache.employees.find(e => e.id === employeeId);
-        if (employee) {
-            employee.bonuses = (employee.bonuses || 0) + 1;
-            employee.totalBonuses = (employee.totalBonuses || 0) + (bonus.amount || 0);
-        }
+    async getTasksForAssignee(assigneeId) {
+        await this.fetchAllData();
+        return this.cache.tasks.filter(t => t.assigneeId === assigneeId);
+    }
+
+    async recalculateWorkload() {
+        // Пример простой логики: workload = (кол-во задач in_progress + todo) * 20%
+        this.cache.team.forEach(member => {
+            const activeTasks = this.cache.tasks.filter(t =>
+                t.assigneeId === member.id && (t.status === 'in_progress' || t.status === 'todo')
+            ).length;
+            member.workload = Math.min(100, activeTasks * 20);
+        });
         this._computeDashboard();
         this._markUpdated();
-
-        try {
-            await this._syncToServer('POST', `/employees/${employeeId}/bonuses`, bonus);
-            await this.fetchAllData(true);
-        } catch (error) {
-            throw error;
-        }
     }
 
     clearCache() {
-        this.cache = { dashboard: null, employees: [], hours: [], penalties: [], bonuses: [], lastUpdated: null };
-        try { localStorage.removeItem(this.storageKey); } catch (e) {}
+        this.cache = { dashboard: null, clients: [], campaigns: [], tasks: [], team: [], metrics: [], lastUpdated: null };
+        try { localStorage.removeItem(this.storageKey); } catch (e) { }
+        this._markUpdated();
     }
 }
 

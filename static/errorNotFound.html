@@ -1,257 +1,416 @@
-<!DOCTYPE html>
-<html lang="en">
+﻿<!DOCTYPE html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HR Harmony Hub | Page Not Found</title>
-    <link rel="stylesheet" href="style">
+    <title>AdHarmony | 404 — Страница не найдена</title>
+    <link rel="stylesheet" href="/style">
     <script src="/thirdParty/3.4.17"></script>
     <script src="/thirdParty/feather.min"></script>
     <style>
-        .error-404 {
-            animation: fadeIn 0.8s ease-out;
+        .error-page {
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            animation: fadeIn 1s ease-out;
         }
-        
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(30px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
-        
+
+        /* Классический RGB-glitch как в оригинале */
         .glitch {
             position: relative;
-            color: #1f2937;
+            font-size: 10rem;
+            font-weight: 900;
+            color: var(--text-primary);
+            text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
         }
-        
-        .glitch::before,
-        .glitch::after {
-            content: '404';
+
+            .glitch::before,
+            .glitch::after {
+                content: '404';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                color: var(--text-primary);
+            }
+
+            .glitch::before {
+                left: 2px;
+                text-shadow: -2px 0 #ff0000;
+                animation: glitch-1 2s infinite linear alternate-reverse;
+                clip-path: inset(40% 0 61% 0);
+            }
+
+            .glitch::after {
+                left: -2px;
+                text-shadow: 2px 0 #00ffff;
+                animation: glitch-2 3s infinite linear alternate-reverse;
+                clip-path: inset(25% 0 30% 0);
+            }
+
+        @keyframes glitch-1 {
+            0% {
+                clip-path: inset(40% 0 61% 0);
+            }
+
+            5% {
+                clip-path: inset(92% 0 1% 0);
+            }
+
+            10% {
+                clip-path: inset(43% 0 1% 0);
+            }
+
+            15% {
+                clip-path: inset(25% 0 58% 0);
+            }
+
+            20% {
+                clip-path: inset(54% 0 7% 0);
+            }
+
+            25% {
+                clip-path: inset(58% 0 43% 0);
+            }
+
+            30% {
+                clip-path: inset(98% 0 1% 0);
+            }
+
+            35% {
+                clip-path: inset(80% 0 5% 0);
+            }
+
+            40% {
+                clip-path: inset(75% 0 9% 0);
+            }
+
+            45% {
+                clip-path: inset(9% 0 90% 0);
+            }
+
+            50% {
+                clip-path: inset(65% 0 25% 0);
+            }
+
+            55% {
+                clip-path: inset(90% 0 1% 0);
+            }
+
+            60% {
+                clip-path: inset(80% 0 1% 0);
+            }
+
+            65% {
+                clip-path: inset(45% 0 50% 0);
+            }
+
+            70% {
+                clip-path: inset(10% 0 85% 0);
+            }
+
+            75% {
+                clip-path: inset(25% 0 60% 0);
+            }
+
+            80% {
+                clip-path: inset(80% 0 1% 0);
+            }
+
+            85% {
+                clip-path: inset(90% 0 4% 0);
+            }
+
+            90% {
+                clip-path: inset(50% 0 40% 0);
+            }
+
+            95% {
+                clip-path: inset(10% 0 60% 0);
+            }
+
+            100% {
+                clip-path: inset(5% 0 60% 0);
+            }
+        }
+
+        @keyframes glitch-2 {
+            0% {
+                clip-path: inset(25% 0 30% 0);
+            }
+
+            5% {
+                clip-path: inset(9% 0 35% 0);
+            }
+
+            10% {
+                clip-path: inset(96% 0 1% 0);
+            }
+
+            15% {
+                clip-path: inset(15% 0 75% 0);
+            }
+
+            20% {
+                clip-path: inset(55% 0 30% 0);
+            }
+
+            25% {
+                clip-path: inset(60% 0 7% 0);
+            }
+
+            30% {
+                clip-path: inset(88% 0 1% 0);
+            }
+
+            35% {
+                clip-path: inset(70% 0 8% 0);
+            }
+
+            40% {
+                clip-path: inset(50% 0 40% 0);
+            }
+
+            45% {
+                clip-path: inset(15% 0 70% 0);
+            }
+
+            50% {
+                clip-path: inset(70% 0 20% 0);
+            }
+
+            55% {
+                clip-path: inset(85% 0 4% 0);
+            }
+
+            60% {
+                clip-path: inset(65% 0 25% 0);
+            }
+
+            65% {
+                clip-path: inset(35% 0 55% 0);
+            }
+
+            70% {
+                clip-path: inset(5% 0 85% 0);
+            }
+
+            75% {
+                clip-path: inset(30% 0 45% 0);
+            }
+
+            80% {
+                clip-path: inset(75% 0 5% 0);
+            }
+
+            85% {
+                clip-path: inset(85% 0 10% 0);
+            }
+
+            90% {
+                clip-path: inset(45% 0 45% 0);
+            }
+
+            95% {
+                clip-path: inset(5% 0 85% 0);
+            }
+
+            100% {
+                clip-path: inset(2% 0 85% 0);
+            }
+        }
+
+        .main-message {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 2rem 0 1rem;
+            color: var(--text-primary);
+        }
+
+        .sub-message {
+            font-size: 1.6rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            max-width: 900px;
+            width: 100%;
+            margin: 3rem 0;
+        }
+
+        .action-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.4s ease;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+            .action-card:hover {
+                transform: translateY(-10px);
+                box-shadow: 0 20px 40px rgba(139, 92, 246, 0.4);
+            }
+
+            .action-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+                transition: left 0.6s;
+            }
+
+            .action-card:hover::before {
+                left: 100%;
+            }
+
+        .action-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bg-particles {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            overflow: hidden;
+            z-index: -1;
         }
-        
-        .glitch::before {
-            left: 2px;
-            text-shadow: -2px 0 #ff0000;
-            animation: glitch-1 2s infinite linear alternate-reverse;
+
+        .particle {
+            position: absolute;
+            background: var(--accent);
+            border-radius: 50%;
+            opacity: 0.2;
+            animation: float 20s infinite linear;
         }
-        
-        .glitch::after {
-            left: -2px;
-            text-shadow: 2px 0 #00ffff;
-            animation: glitch-2 3s infinite linear alternate-reverse;
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+            }
+
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+            }
         }
-        
-        @keyframes glitch-1 {
-            0% { clip-path: inset(40% 0 61% 0); }
-            5% { clip-path: inset(92% 0 1% 0); }
-            10% { clip-path: inset(43% 0 1% 0); }
-            15% { clip-path: inset(25% 0 58% 0); }
-            20% { clip-path: inset(54% 0 7% 0); }
-            25% { clip-path: inset(58% 0 43% 0); }
-            30% { clip-path: inset(98% 0 1% 0); }
-            35% { clip-path: inset(80% 0 5% 0); }
-            40% { clip-path: inset(75% 0 9% 0); }
-            45% { clip-path: inset(9% 0 90% 0); }
-            50% { clip-path: inset(65% 0 25% 0); }
-            55% { clip-path: inset(90% 0 1% 0); }
-            60% { clip-path: inset(80% 0 1% 0); }
-            65% { clip-path: inset(45% 0 50% 0); }
-            70% { clip-path: inset(10% 0 85% 0); }
-            75% { clip-path: inset(25% 0 60% 0); }
-            80% { clip-path: inset(80% 0 1% 0); }
-            85% { clip-path: inset(90% 0 4% 0); }
-            90% { clip-path: inset(50% 0 40% 0); }
-            95% { clip-path: inset(10% 0 60% 0); }
-            100% { clip-path: inset(5% 0 60% 0); }
-        }
-        
-        @keyframes glitch-2 {
-            0% { clip-path: inset(25% 0 30% 0); }
-            5% { clip-path: inset(9% 0 35% 0); }
-            10% { clip-path: inset(96% 0 1% 0); }
-            15% { clip-path: inset(15% 0 75% 0); }
-            20% { clip-path: inset(55% 0 30% 0); }
-            25% { clip-path: inset(60% 0 7% 0); }
-            30% { clip-path: inset(88% 0 1% 0); }
-            35% { clip-path: inset(70% 0 8% 0); }
-            40% { clip-path: inset(50% 0 40% 0); }
-            45% { clip-path: inset(15% 0 70% 0); }
-            50% { clip-path: inset(70% 0 20% 0); }
-            55% { clip-path: inset(85% 0 4% 0); }
-            60% { clip-path: inset(65% 0 25% 0); }
-            65% { clip-path: inset(35% 0 55% 0); }
-            70% { clip-path: inset(5% 0 85% 0); }
-            75% { clip-path: inset(30% 0 45% 0); }
-            80% { clip-path: inset(75% 0 5% 0); }
-            85% { clip-path: inset(85% 0 10% 0); }
-            90% { clip-path: inset(45% 0 45% 0); }
-            95% { clip-path: inset(5% 0 85% 0); }
-            100% { clip-path: inset(2% 0 85% 0); }
-        }
-        
-        .main-message {
-            font-size: 3.5rem;
-            font-weight: 800;
-            line-height: 1;
-            margin-bottom: 1rem;
-        }
-        
-        .sub-message {
-            font-size: 1.5rem;
-            color: #6b7280;
-            margin-bottom: 2rem;
-        }
-        
-        .warning-message {
-            font-size: 1.25rem;
-            color: #4b5563;
-            margin-bottom: 2rem;
-        }
-        
-        .ip-display {
-            background-color: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.5rem;
-            padding: 0.75rem 1rem;
-            font-family: 'Courier New', monospace;
-            color: #374151;
-            margin-bottom: 2rem;
-            display: inline-block;
-        }
-        
+
         @media (max-width: 768px) {
+            .glitch {
+                font-size: 7rem;
+            }
+
             .main-message {
                 font-size: 2.5rem;
             }
-            
+
             .sub-message {
-                font-size: 1.25rem;
-            }
-            
-            .warning-message {
-                font-size: 1rem;
+                font-size: 1.4rem;
             }
         }
     </style>
 </head>
-<body class="bg-gray-50">
+<body>
     <custom-navbar></custom-navbar>
-    
-    <main class="container mx-auto px-4 py-8">
-        <div class="error-404 min-h-[70vh] flex flex-col items-center justify-center text-center">
-            <!-- Glitch Effect 404 -->
-            <div class="relative mb-8">
-                <h1 class="glitch text-9xl font-bold text-gray-800">404</h1>
-                <div class="absolute -inset-4 bg-gradient-to-r from-blue-500 to-purple-500 opacity-10 blur-xl rounded-full"></div>
-            </div>
-            
-            <!-- Main Message -->
-            <h2 class="main-message text-gray-700">
-                Ой-ой!
-            </h2>
 
-            <p class="sub-message text-gray-600">
-                    Кажется Тигрекс съел вашу страницу... 😊
-            </p>
-            
-            <!-- Action Buttons -->
-            <div class="flex flex-wrap gap-4 justify-center mt-8">
-                <a href="/" 
-                   class="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition-colors duration-200">
-                    <i data-feather="home" class="w-5 h-5"></i>
-                    На главную
-                </a>
-                
-                <a href="employees" 
-                   class="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition-colors duration-200">
-                    <i data-feather="users" class="w-5 h-5"></i>
-                    Сотрудники
-                </a>
-                
-                <a href="salary" 
-                   class="inline-flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg transition-colors duration-200">
-                    <i data-feather="dollar-sign" class="w-5 h-5"></i>
-                    Зарплаты
-                </a>
-                
-                <a href="hours" 
-                   class="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg transition-colors duration-200">
-                    <i data-feather="clock" class="w-5 h-5"></i>
-                    Часы работы
-                </a>
+    <main class="container mx-auto px-4 py-12 relative">
+        <div class="error-page">
+            <div class="bg-particles" id="particles"></div>
+
+            <!-- Классический glitch из оригинала -->
+            <div class="relative mb-8">
+                <h1 class="glitch">404</h1>
             </div>
-            
-            <!-- Helpful Links -->
-            <div class="mt-12 p-6 bg-white rounded-xl shadow-md max-w-lg">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Возможно, вы искали:</h3>
-                <div class="grid grid-cols-2 gap-3">
-                    <a href="/" class="text-blue-500 hover:text-blue-700 hover:underline flex items-center gap-1">
-                        <i data-feather="pie-chart" class="w-4 h-4"></i>
-                        Дашборд
-                    </a>
-                    <a href="employees?status=hired" class="text-blue-500 hover:text-blue-700 hover:underline flex items-center gap-1">
-                        <i data-feather="user-check" class="w-4 h-4"></i>
-                        Нанятые сотрудники
-                    </a>
-                    <a href="employees?status=interview" class="text-blue-500 hover:text-blue-700 hover:underline flex items-center gap-1">
-                        <i data-feather="users" class="w-4 h-4"></i>
-                        Собеседования
-                    </a>
-                    <a href="salary" class="text-blue-500 hover:text-blue-700 hover:underline flex items-center gap-1">
-                        <i data-feather="credit-card" class="w-4 h-4"></i>
-                        Расчет зарплат
-                    </a>
-                </div>
+
+            <h2 class="main-message">Ой-ой!</h2>
+            <p class="sub-message">
+                Кажется, Тигрекс съел вашу страницу... 😊
+            </p>
+
+            <div class="actions-grid">
+                <a href="/" class="action-card">
+                    <div class="action-icon">
+                        <i data-feather="home" class="w-10 h-10 text-var(--accent)"></i>
+                    </div>
+                    <h3 class="font-semibold text-xl mb-2">На главную</h3>
+                    <p class="text-var(--text-secondary)">Вернуться на дашборд</p>
+                </a>
+
+                <a href="/clients" class="action-card">
+                    <div class="action-icon">
+                        <i data-feather="users" class="w-10 h-10 text-var(--accent)"></i>
+                    </div>
+                    <h3 class="font-semibold text-xl mb-2">Клиенты</h3>
+                    <p class="text-var(--text-secondary)">Управление базой клиентов</p>
+                </a>
+
+                <a href="/campaigns" class="action-card">
+                    <div class="action-icon">
+                        <i data-feather="trending-up" class="w-10 h-10 text-var(--accent)"></i>
+                    </div>
+                    <h3 class="font-semibold text-xl mb-2">Кампании</h3>
+                    <p class="text-var(--text-secondary)">Запуск и отслеживание рекламы</p>
+                </a>
             </div>
         </div>
     </main>
-    
+
     <custom-footer></custom-footer>
-    
-    <!-- Components -->
-    <script src="components/navbar"></script>
-    <script src="components/footer"></script>
-    
+
+    <script src="/components/navbar"></script>
+    <script src="/components/footer"></script>
+
     <script>
         feather.replace();
-            // Анимация фона для эффекта
-            const backgroundAnimation = document.createElement('div');
-            backgroundAnimation.className = 'fixed inset-0 -z-10 overflow-hidden pointer-events-none';
-            document.body.appendChild(backgroundAnimation);
-            
-            // Создаем плавающие элементы фона
-            for (let i = 0; i < 15; i++) {
-                const dot = document.createElement('div');
-                dot.className = 'absolute rounded-full bg-gradient-to-r from-blue-200 to-purple-200 opacity-20';
-                dot.style.width = `${Math.random() * 100 + 50}px`;
-                dot.style.height = dot.style.width;
-                dot.style.left = `${Math.random() * 100}%`;
-                dot.style.top = `${Math.random() * 100}%`;
-                dot.style.animation = `float ${Math.random() * 10 + 10}s infinite ease-in-out`;
-                backgroundAnimation.appendChild(dot);
-            }
-            
-            // Добавляем стили для анимации плавания
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes float {
-                    0%, 100% { transform: translate(0, 0) rotate(0deg); }
-                    25% { transform: translate(${Math.random() * 100 - 50}px, ${Math.random() * 100 - 50}px) rotate(${Math.random() * 90 - 45}deg); }
-                    50% { transform: translate(${Math.random() * 100 - 50}px, ${Math.random() * 100 - 50}px) rotate(${Math.random() * 90 - 45}deg); }
-                    75% { transform: translate(${Math.random() * 100 - 50}px, ${Math.random() * 100 - 50}px) rotate(${Math.random() * 90 - 45}deg); }
-                }
-            `;
-            document.head.appendChild(style);
-        
+
+        // Плавающие частицы
+        const particlesContainer = document.getElementById('particles');
+        for (let i = 0; i < 25; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.style.width = `${Math.random() * 10 + 5}px`;
+            p.style.height = p.style.width;
+            p.style.left = `${Math.random() * 100}%`;
+            p.style.animationDelay = `${Math.random() * 20}s`;
+            p.style.animationDuration = `${Math.random() * 25 + 20}s`;
+            particlesContainer.appendChild(p);
+        }
     </script>
 </body>
 </html>

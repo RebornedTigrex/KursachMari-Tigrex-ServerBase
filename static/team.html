@@ -1,0 +1,325 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <link rel="icon" href="/favicon" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdHarmony | Команда</title>
+    <link rel="stylesheet" href="/style">
+    <script src="/thirdParty/3.4.17"></script>
+    <script src="/thirdParty/feather.min"></script>
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .member-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+            .member-card:hover {
+                transform: translateY(-10px);
+                box-shadow: 0 20px 40px rgba(139, 92, 246, 0.4);
+            }
+
+            .member-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+                transition: left 0.6s;
+            }
+
+            .member-card:hover::before {
+                left: 100%;
+            }
+
+        .member-avatar {
+            width: 100px;
+            height: 100px;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 3rem;
+            color: var(--accent);
+        }
+
+        .member-name {
+            font-size: 1.6rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .member-role {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .workload-bar {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            height: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .workload-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #8b5cf6, #ec4899);
+            border-radius: 0.5rem;
+            transition: width 0.6s ease;
+        }
+
+        .workload-text {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tasks-count {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .add-button {
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+        }
+
+            .add-button:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 10px 25px rgba(139, 92, 246, 0.6);
+            }
+
+        .modal-content {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <custom-navbar></custom-navbar>
+
+    <main class="container mx-auto px-4 py-12">
+        <div class="page-header">
+            <h1 class="text-4xl font-bold">
+                <span style="background: linear-gradient(135deg, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    Команда
+                </span>
+            </h1>
+            <button class="add-button" id="add-member-btn">
+                <i data-feather="plus" class="w-5 h-5 inline mr-2"></i>
+                Добавить сотрудника
+            </button>
+        </div>
+
+        <div class="team-grid" id="team-container">
+            <p class="text-center text-var(--text-secondary)">Загрузка команды...</p>
+        </div>
+    </main>
+
+    <!-- Модальное окно -->
+    <div class="modal fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden" id="member-modal">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-6" id="modal-title">Добавить сотрудника</h2>
+            <form id="member-form">
+                <input type="hidden" id="edit-id" value="">
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">ФИО</label>
+                    <input type="text" id="member-name" required class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-2">Роль / Должность</label>
+                    <input type="text" id="member-role" required class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                </div>
+
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="cancel-btn" class="px-6 py-3 rounded-lg border border-var(--glass-border) hover:bg-white/10">
+                        Отмена
+                    </button>
+                    <button type="submit" class="px-6 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium">
+                        Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <custom-footer></custom-footer>
+
+    <script src="/components/navbar"></script>
+    <script src="/components/footer"></script>
+    <script src="/modules/dataCache"></script>
+    <script src="/modules/notifications"></script>
+
+    <script>
+        feather.replace();
+
+        const container = document.getElementById('team-container');
+        const modal = document.getElementById('member-modal');
+        const form = document.getElementById('member-form');
+        const addBtn = document.getElementById('add-member-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+
+        async function renderTeam() {
+            const team = await window.dataCache.getTeam();
+            const tasks = await window.dataCache.getTasks();
+
+            if (team.length === 0) {
+                container.innerHTML = '<p class="text-center text-var(--text-secondary) col-span-full">Команда пока пуста. Добавьте первого сотрудника!</p>';
+                return;
+            }
+
+            // Подсчёт активных задач для каждого сотрудника
+            const taskCounts = {};
+            tasks.forEach(t => {
+                if (t.status !== 'done') { // только не завершённые
+                    taskCounts[t.assigneeId] = (taskCounts[t.assigneeId] || 0) + 1;
+                }
+            });
+
+            container.innerHTML = team.map(member => {
+                const activeTasks = taskCounts[member.id] || 0;
+                const workload = Math.min(100, activeTasks * 20);
+
+                // Первая буква имени для аватара
+                const initials = member.fullname.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+                return `
+                        <div class="member-card">
+                            <div class="member-avatar">${initials}</div>
+                            <div class="member-name">${member.fullname}</div>
+                            <div class="member-role">${member.role}</div>
+
+                            <div class="workload-bar">
+                                <div class="workload-fill" style="width: ${workload}%"></div>
+                            </div>
+                            <div class="workload-text">${workload}%</div>
+
+                            <div class="tasks-count">
+                                Активных задач: ${activeTasks}
+                            </div>
+
+                            <div class="flex gap-3 mt-6">
+                                <button onclick="openEditModal(${member.id})" class="flex-1 py-2 rounded-lg border border-var(--glass-border) hover:bg-white/10 transition">
+                                    <i data-feather="edit-2" class="w-4 h-4 inline mr-1"></i> Редактировать
+                                </button>
+                                <button onclick="deleteMember(${member.id})" class="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition">
+                                    <i data-feather="trash-2" class="w-4 h-4 inline mr-1"></i> Удалить
+                                </button>
+                            </div>
+                        </div>
+                    `;
+            }).join('');
+
+            feather.replace();
+        }
+
+        function openAddModal() {
+            document.getElementById('modal-title').textContent = 'Добавить сотрудника';
+            form.reset();
+            document.getElementById('edit-id').value = '';
+            modal.classList.remove('hidden');
+        }
+
+        window.openEditModal = async function (memberId) {
+            const team = await window.dataCache.getTeam();
+            const member = team.find(m => m.id === memberId);
+            if (!member) return;
+
+            document.getElementById('modal-title').textContent = 'Редактировать сотрудника';
+            document.getElementById('edit-id').value = member.id;
+            document.getElementById('member-name').value = member.fullname;
+            document.getElementById('member-role').value = member.role;
+            modal.classList.remove('hidden');
+        }
+
+        window.deleteMember = async function (memberId) {
+            if (!confirm('Удалить сотрудника? Все назначенные задачи будут сняты.')) return;
+
+            try {
+                await window.dataCache.deleteTeamMember(memberId);
+                notifications.showSuccess('Сотрудник удалён');
+                renderTeam();
+            } catch (err) {
+                notifications.showError(err);
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const data = {
+                fullname: document.getElementById('member-name').value.trim(),
+                role: document.getElementById('member-role').value.trim()
+            };
+
+            try {
+                if (id) {
+                    await window.dataCache.updateTeamMember(Number(id), data);
+                    notifications.showSuccess('Сотрудник обновлён');
+                } else {
+                    await window.dataCache.addTeamMember(data);
+                    notifications.showSuccess('Сотрудник добавлен');
+                }
+                modal.classList.add('hidden');
+                renderTeam();
+            } catch (err) {
+                notifications.showError(err);
+            }
+        });
+
+        addBtn.addEventListener('click', openAddModal);
+        cancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
+        modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', renderTeam);
+        window.addEventListener('dataCache:updated', renderTeam);
+    </script>
+</body>
+</html>

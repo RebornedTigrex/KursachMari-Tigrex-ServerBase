@@ -1,0 +1,346 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <link rel="icon" href="/favicon" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdHarmony | Клиенты</title>
+    <link rel="stylesheet" href="/style">
+    <script src="/thirdParty/3.4.17"></script>
+    <script src="/thirdParty/feather.min"></script>
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .clients-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .client-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.5rem;
+            padding: 1.75rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+            .client-card:hover {
+                transform: translateY(-8px);
+                box-shadow: 0 20px 40px rgba(139, 92, 246, 0.4);
+            }
+
+            .client-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+                transition: left 0.6s;
+            }
+
+            .client-card:hover::before {
+                left: 100%;
+            }
+
+        .client-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .client-contact {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .client-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.4rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .status-badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .status-prospect {
+            background: rgba(139, 92, 246, 0.2);
+            color: #8b5cf6;
+        }
+
+        .add-button {
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+        }
+
+            .add-button:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 10px 25px rgba(139, 92, 246, 0.6);
+            }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+            .modal.active {
+                opacity: 1;
+                visibility: visible;
+            }
+
+        .modal-content {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <custom-navbar></custom-navbar>
+
+    <main class="container mx-auto px-4 py-12">
+        <div class="page-header">
+            <h1 class="text-4xl font-bold">
+                <span style="background: linear-gradient(135deg, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    Клиенты
+                </span>
+            </h1>
+            <button class="add-button" id="add-client-btn">
+                <i data-feather="plus" class="w-5 h-5 inline mr-2"></i>
+                Добавить клиента
+            </button>
+        </div>
+
+        <div class="clients-grid" id="clients-container">
+            <!-- Клиенты будут вставлены через JS -->
+            <p class="text-center text-var(--text-secondary)">Загрузка клиентов...</p>
+        </div>
+    </main>
+
+    <!-- Модальное окно добавления/редактирования -->
+    <div class="modal" id="client-modal">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-6" id="modal-title">Добавить клиента</h2>
+            <form id="client-form">
+                <input type="hidden" id="edit-id" value="">
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Название компании / ФИО</label>
+                    <input type="text" id="client-name" required class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Контактное лицо / Email / Телефон</label>
+                    <input type="text" id="client-contact" required class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-2">Статус</label>
+                    <select id="client-status" class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                        <option value="prospect">Потенциальный</option>
+                        <option value="active">Активный</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="cancel-btn" class="px-6 py-3 rounded-lg border border-var(--glass-border) hover:bg-white/10">
+                        Отмена
+                    </button>
+                    <button type="submit" class="px-6 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium">
+                        Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <custom-footer></custom-footer>
+
+    <script src="/components/navbar"></script>
+    <script src="/components/footer"></script>
+    <script src="/modules/dataCache"></script>
+    <script src="/modules/notifications"></script>
+
+    <script>
+        feather.replace();
+
+        const clientsContainer = document.getElementById('clients-container');
+        const modal = document.getElementById('client-modal');
+        const form = document.getElementById('client-form');
+        const modalTitle = document.getElementById('modal-title');
+        const addBtn = document.getElementById('add-client-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+
+        async function renderClients() {
+            const clients = await window.dataCache.getClients();
+
+            if (clients.length === 0) {
+                clientsContainer.innerHTML = '<p class="text-center text-var(--text-secondary) col-span-full">Клиентов пока нет. Добавьте первого!</p>';
+                return;
+            }
+
+            clientsContainer.innerHTML = clients.map(client => `
+                <div class="client-card">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <div class="client-name">${client.name}</div>
+                            <div class="client-contact">${client.contact}</div>
+                        </div>
+                        <span class="status-badge status-${client.status}">
+                            ${client.status === 'active' ? 'Активный' : 'Потенциальный'}
+                        </span>
+                    </div>
+
+                    <div class="client-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${client.campaignsCount || 0}</div>
+                            <div class="stat-label">Кампаний</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${new Intl.NumberFormat('ru-RU').format(client.totalBudget || 0)} ₽</div>
+                            <div class="stat-label">Общий бюджет</div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 mt-6">
+                        <button onclick="openEditModal(${client.id})" class="flex-1 py-2 rounded-lg border border-var(--glass-border) hover:bg-white/10 transition">
+                            <i data-feather="edit-2" class="w-4 h-4 inline mr-1"></i> Редактировать
+                        </button>
+                        <button onclick="deleteClient(${client.id})" class="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition">
+                            <i data-feather="trash-2" class="w-4 h-4 inline mr-1"></i> Удалить
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            feather.replace();
+        }
+
+        function openAddModal() {
+            modalTitle.textContent = 'Добавить клиента';
+            form.reset();
+            document.getElementById('edit-id').value = '';
+            modal.classList.add('active');
+        }
+
+        window.openEditModal = async function(clientId) {
+            const clients = await window.dataCache.getClients();
+            const client = clients.find(c => c.id === clientId);
+            if (!client) return;
+
+            modalTitle.textContent = 'Редактировать клиента';
+            document.getElementById('edit-id').value = client.id;
+            document.getElementById('client-name').value = client.name;
+            document.getElementById('client-contact').value = client.contact;
+            document.getElementById('client-status').value = client.status;
+            modal.classList.add('active');
+        }
+
+        window.deleteClient = async function(clientId) {
+            if (!confirm('Удалить клиента? Все связанные кампании тоже будут удалены.')) return;
+
+            try {
+                await window.dataCache.deleteClient(clientId);
+                notifications.showSuccess('Клиент удалён');
+                renderClients();
+            } catch (err) {
+                notifications.showError(err);
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const data = {
+                name: document.getElementById('client-name').value.trim(),
+                contact: document.getElementById('client-contact').value.trim(),
+                status: document.getElementById('client-status').value
+            };
+
+            try {
+                if (id) {
+                    await window.dataCache.updateClient(Number(id), data);
+                    notifications.showSuccess('Клиент обновлён');
+                } else {
+                    await window.dataCache.addClient(data);
+                    notifications.showSuccess('Клиент добавлен');
+                }
+                modal.classList.remove('active');
+                renderClients();
+            } catch (err) {
+                notifications.showError(err);
+            }
+        });
+
+        addBtn.addEventListener('click', openAddModal);
+        cancelBtn.addEventListener('click', () => modal.classList.remove('active'));
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('active');
+        });
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', renderClients);
+        window.addEventListener('dataCache:updated', renderClients);
+    </script>
+</body>
+</html>

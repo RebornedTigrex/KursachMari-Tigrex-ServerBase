@@ -1,130 +1,255 @@
-<!-- index.html (Dashboard) - Updated to use fetchAllData and remove multiple requests -->
-<!DOCTYPE html>
-<html lang="en">
+﻿<!DOCTYPE html>
+<html lang="ru">
 <head>
     <link rel="icon" href="/favicon" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HR Harmony Hub | Dashboard</title>
-    <link rel="stylesheet" href="style">
+    <title>AdHarmony | Дашборд</title>
+    <link rel="stylesheet" href="/style"> <!-- Новый glassmorphism стиль -->
     <script src="/thirdParty/3.4.17"></script>
     <script src="/thirdParty/feather.min"></script>
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.4);
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.6s;
+        }
+
+        .metric-card:hover::before {
+            left: 100%;
+        }
+
+        .metric-value {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0.5rem 0;
+        }
+
+        .metric-label {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .quick-actions {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .action-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .action-card:hover {
+            transform: translateY(-8px);
+            background: rgba(139, 92, 246, 0.1);
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+        }
+
+        .action-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 1rem;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-width: 768px) {
+            .metric-value { font-size: 2.5rem; }
+            .quick-actions { padding: 1.5rem; }
+        }
+    </style>
 </head>
-<body class="bg-gray-50">
+<body>
     <custom-navbar></custom-navbar>
-<main class="container mx-auto px-4 py-8">
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <!-- Penalties Card -->
-            <div class="bg-white rounded-xl shadow-md p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-semibold text-gray-700">Штрафы</h2>
-                    <i data-feather="alert-triangle" class="text-red-500"></i>
-                </div>
-                <div class="text-3xl font-bold text-red-600" id="penalties-count">0</div>
-                <p class="text-gray-500 mt-2">За месяц</p>
+
+    <main class="container mx-auto px-4 py-12">
+        <h1 class="text-4xl font-bold text-center mb-12">
+            <span style="background: linear-gradient(135deg, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Дашборд AdHarmony
+            </span>
+        </h1>
+
+        <!-- Метрики -->
+        <div class="dashboard-grid">
+            <div class="metric-card">
+                <div class="metric-label">Активных клиентов</div>
+                <div class="metric-value" id="active-clients">0</div>
+                <p class="text-sm text-gray-400">На текущий момент</p>
             </div>
-            
-            <!-- Bonuses Card -->
-            <div class="bg-white rounded-xl shadow-md p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-semibold text-gray-700">Бонусы</h2>
-                    <i data-feather="gift" class="text-green-500"></i>
-                </div>
-                <div class="text-3xl font-bold text-green-600" id="bonuses-count">0</div>
-                <p class="text-gray-500 mt-2">За месяц</p>
+
+            <div class="metric-card">
+                <div class="metric-label">Активных кампаний</div>
+                <div class="metric-value" id="active-campaigns">0</div>
+                <p class="text-sm text-gray-400">Запущено сейчас</p>
             </div>
-            
-            <!-- Undertime Card -->
-            <div class="bg-white rounded-xl shadow-md p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-semibold text-gray-700">Недоработка</h2>
-                    <i data-feather="clock" class="text-yellow-500"></i>
-                </div>
-                <div class="text-3xl font-bold text-yellow-600" id="undertime-count">0</div>
-                <p class="text-gray-500 mt-2">Часов за месяц</p>
+
+            <div class="metric-card">
+                <div class="metric-label">Общий бюджет</div>
+                <div class="metric-value" id="total-budget">0 ₽</div>
+                <p class="text-sm text-gray-400">На активные кампании</p>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Потрачено</div>
+                <div class="metric-value" id="total-spent">0 ₽</div>
+                <p class="text-sm text-gray-400">Из активного бюджета</p>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Средний ROI</div>
+                <div class="metric-value" id="avg-roi">—</div>
+                <p class="text-sm text-gray-400">По завершённым кампаниям</p>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Загрузка команды</div>
+                <div class="metric-value" id="team-workload">0%</div>
+                <p class="text-sm text-gray-400">Средняя занятость</p>
             </div>
         </div>
-        
-        <div class="bg-white rounded-xl shadow-md p-6">
+
+        <!-- Быстрые действия -->
+        <div class="quick-actions">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-gray-800">Быстрые действия</h2>
-                <a href="employees" class="text-blue-500 hover:text-blue-700 flex items-center">
-                    <span>Показать все</span>
-                    <i data-feather="chevron-right" class="ml-1 w-4 h-4"></i>
+                <h2 class="text-2xl font-bold">Быстрые действия</h2>
+                <a href="/clients" class="text-var(--accent) hover:underline flex items-center gap-2">
+                    Все действия <i data-feather="arrow-right" class="w-5 h-5"></i>
                 </a>
             </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <a href="salary" class="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                    <div class="flex items-center">
-                        <div class="bg-green-100 p-3 rounded-full mr-4">
-                            <i data-feather="dollar-sign" class="text-green-500"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-medium">Зарплаты</h3>
-                            <p class="text-sm text-gray-500">Перейти к управлению зарплатой</p>
-                        </div>
+
+            <div class="action-grid">
+                <a href="/clients" class="action-card text-decoration-none">
+                    <div class="action-icon">
+                        <i data-feather="users" class="w-8 h-8 text-var(--accent)"></i>
                     </div>
+                    <h3 class="font-semibold mb-1">Клиенты</h3>
+                    <p class="text-sm text-var(--text-secondary)">Управление базой клиентов</p>
                 </a>
-                
-                <a href="hours" class="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                    <div class="flex items-center">
-                        <div class="bg-blue-100 p-3 rounded-full mr-4">
-                            <i data-feather="clock" class="text-blue-500"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-medium">Отработанные часы</h3>
-                            <p class="text-sm text-gray-500">Просмотр учёта часов</p>
-                        </div>
+
+                <a href="/campaigns" class="action-card">
+                    <div class="action-icon">
+                        <i data-feather="trending-up" class="w-8 h-8 text-var(--accent)"></i>
                     </div>
+                    <h3 class="font-semibold mb-1">Кампании</h3>
+                    <p class="text-sm text-var(--text-secondary)">Запуск и отслеживание рекламы</p>
                 </a>
-                
-                <a href="employees?status=interview" class="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                    <div class="flex items-center">
-                        <div class="bg-blue-100 p-3 rounded-full mr-4">
-                            <i data-feather="users" class="text-blue-500"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-medium">Interviews</h3>
-                            <p class="text-sm text-gray-500">Candidates in process</p>
-                        </div>
+
+                <a href="/tasks" class="action-card">
+                    <div class="action-icon">
+                        <i data-feather="check-square" class="w-8 h-8 text-var(--accent)"></i>
                     </div>
+                    <h3 class="font-semibold mb-1">Задачи</h3>
+                    <p class="text-sm text-var(--text-secondary)">Канбан и контроль выполнения</p>
+                </a>
+
+                <a href="/team" class="action-card">
+                    <div class="action-icon">
+                        <i data-feather="user-check" class="w-8 h-8 text-var(--accent)"></i>
+                    </div>
+                    <h3 class="font-semibold mb-1">Команда</h3>
+                    <p class="text-sm text-var(--text-secondary)">Загруженность и роли</p>
                 </a>
             </div>
         </div>
     </main>
-    
+
     <custom-footer></custom-footer>
-    <!-- Components -->
-    <script src="components/navbar"></script>
-<script src="components/footer"></script>
-<!-- Scripts -->
-    <script src="modules/dataCache"></script> <!-- Note: Updated to dataCache -->
+
+    <!-- Компоненты -->
+    <script src="/components/navbar"></script>
+    <script src="/components/footer"></script>
+
+    <!-- Модули -->
+    <script src="/modules/dataCache.js"></script>
+    <script src="/modules/notifications.js"></script>
+
     <script>
         feather.replace();
-        
-        let dashboardLoadingPromise = null;
-        
+
+        let dashboardPromise = null;
+
         async function updateDashboard(force = false) {
-            if (dashboardLoadingPromise) return dashboardLoadingPromise;
-            
-            dashboardLoadingPromise = (async () => {
+            if (dashboardPromise) return dashboardPromise;
+
+            dashboardPromise = (async () => {
                 try {
-                    const { dashboard } = await window.dataCache.fetchAllData(force);
-                    document.getElementById('penalties-count').textContent = dashboard.penalties;
-                    document.getElementById('bonuses-count').textContent = dashboard.bonuses;
-                    document.getElementById('undertime-count').textContent = dashboard.undertime.toFixed(1);
+                    const dashboard = await window.dataCache.getDashboardData();
+
+                    document.getElementById('active-clients').textContent = dashboard.activeClients;
+                    document.getElementById('active-campaigns').textContent = dashboard.activeCampaigns;
+                    document.getElementById('total-budget').textContent = 
+                        new Intl.NumberFormat('ru-RU').format(dashboard.totalBudget) + ' ₽';
+                    document.getElementById('total-spent').textContent = 
+                        new Intl.NumberFormat('ru-RU').format(dashboard.totalSpent) + ' ₽';
+                    document.getElementById('avg-roi').textContent = 
+                        dashboard.avgRoi > 0 ? dashboard.avgRoi + 'x' : '—';
+                    document.getElementById('team-workload').textContent = dashboard.teamWorkload + '%';
+                } catch (err) {
+                    console.warn('Ошибка загрузки дашборда:', err);
+                    window.notifications?.showError(err);
                 } finally {
-                    dashboardLoadingPromise = null;
+                    dashboardPromise = null;
                 }
             })();
-            return dashboardLoadingPromise;
+
+            return dashboardPromise;
         }
-        
-        // Initialize dashboard data
+
+        // Инициализация
         document.addEventListener('DOMContentLoaded', () => updateDashboard());
-        
-        // Listen for cache updates and refresh dashboard
+
+        // Автообновление при изменении кэша (например, после добавления клиента)
         window.addEventListener('dataCache:updated', () => updateDashboard(true));
     </script>
 </body>
