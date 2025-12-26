@@ -1,21 +1,22 @@
-﻿// components/navbar.js - Финальная версия: sticky без jitter + кнопки выровнены идеально
+﻿// components/navbar.js - Финальная версия с добавленной кнопкой "Задачи"
+
 class CustomNavbar extends HTMLElement {
     connectedCallback() {
         this.attachShadow({ mode: 'open' });
         this.shadowRoot.innerHTML = `
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap');
-        
+       
         :host {
           display: block;
           width: 100%;
         }
-        
+       
         .navbar-wrapper {
           height: 40px; /* Фиксированная высота navbar */
           position: relative;
         }
-        
+       
         .navbar-container {
           position: absolute;
           top: 0;
@@ -34,7 +35,7 @@ class CustomNavbar extends HTMLElement {
           height: 40px;
           z-index: 40;
         }
-        
+       
         /* Sticky состояние */
         .navbar-container.sticky {
           position: fixed;
@@ -46,11 +47,11 @@ class CustomNavbar extends HTMLElement {
           border-bottom: none;
           z-index: 50;
         }
-        
+       
         .navbar-container.sticky:hover {
           background: rgba(15, 23, 42, 0.8);
         }
-        
+       
         /* Логотип */
         .logo-link {
           display: flex;
@@ -65,12 +66,12 @@ class CustomNavbar extends HTMLElement {
           -webkit-text-fill-color: transparent;
           transition: all 0.3s ease;
         }
-        
+       
         .logo-link:hover {
           transform: scale(1.05);
           filter: drop-shadow(0 0 15px rgba(139, 92, 246, 0.6));
         }
-        
+       
         .logo-icon {
           width: 32px;
           height: 32px;
@@ -78,18 +79,18 @@ class CustomNavbar extends HTMLElement {
           filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.5));
           transition: transform 0.4s ease;
         }
-        
+       
         .logo-link:hover .logo-icon {
           transform: rotate(360deg);
         }
-        
+       
         /* Кнопки навигации */
         .nav-buttons {
           display: flex;
           gap: 2rem;
           align-items: center;
         }
-        
+       
         .nav-button {
           position: relative;
           text-decoration: none;
@@ -100,7 +101,7 @@ class CustomNavbar extends HTMLElement {
           transition: all 0.3s ease;
           overflow: hidden;
         }
-        
+       
         .nav-button::before {
           content: '';
           position: absolute;
@@ -113,18 +114,18 @@ class CustomNavbar extends HTMLElement {
           transition: left 0.5s ease;
           box-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
         }
-        
+       
         .nav-button:hover,
         .nav-button.active {
           color: #e2e8f0;
           text-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
         }
-        
+       
         .nav-button:hover::before,
         .nav-button.active::before {
           left: 0;
         }
-        
+       
         /* Shine-эффект */
         .navbar-container::after {
           content: '';
@@ -137,18 +138,18 @@ class CustomNavbar extends HTMLElement {
           transition: left 0.8s ease;
           pointer-events: none;
         }
-        
+       
         .navbar-container:hover::after {
           left: 100%;
         }
-        
+       
         @media (max-width: 768px) {
           .nav-buttons { gap: 1rem; }
           .nav-button { font-size: 1rem; }
           .navbar-container { padding: 1rem; }
         }
       </style>
-      
+     
       <div class="navbar-wrapper">
         <div class="navbar-container" id="navbar">
           <a href="/" class="logo-link">
@@ -161,6 +162,7 @@ class CustomNavbar extends HTMLElement {
           </a>
           <div class="nav-buttons">
             <a href="/" class="nav-button ${location.pathname === '/' ? 'active' : ''}">Главное меню</a>
+            <a href="/tasks" class="nav-button ${location.pathname.startsWith('/tasks') ? 'active' : ''}">Задачи</a>
             <a href="/clients" class="nav-button ${location.pathname.startsWith('/clients') ? 'active' : ''}">Клиенты</a>
             <a href="/campaigns" class="nav-button ${location.pathname.startsWith('/campaigns') ? 'active' : ''}">Кампании</a>
             <a href="/team" class="nav-button ${location.pathname.startsWith('/team') ? 'active' : ''}">Команда</a>
@@ -178,14 +180,12 @@ class CustomNavbar extends HTMLElement {
             (entries) => {
                 entries.forEach(entry => {
                     if (!entry.isIntersecting && !isSticky) {
-                        // Становится sticky
                         navbar.classList.add('sticky');
                         placeholder = document.createElement('div');
                         placeholder.className = 'placeholder';
                         this.parentNode.insertBefore(placeholder, this);
                         isSticky = true;
                     } else if (entry.isIntersecting && isSticky) {
-                        // Возвращается в обычное положение
                         navbar.classList.remove('sticky');
                         if (placeholder && placeholder.parentNode) {
                             placeholder.parentNode.removeChild(placeholder);
@@ -197,7 +197,6 @@ class CustomNavbar extends HTMLElement {
             },
             { rootMargin: '-1px 0px 0px 0px', threshold: 0 }
         );
-
         observer.observe(wrapper);
     }
 }
