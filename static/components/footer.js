@@ -1,4 +1,4 @@
-// components/footer.js - Переработанный под dark glassmorphism стиль
+п»ї// components/footer.js - РџРµСЂРµСЂР°Р±РѕС‚Р°РЅРЅС‹Р№ РїРѕРґ dark glassmorphism СЃС‚РёР»СЊ
 
 class CustomFooter extends HTMLElement {
     connectedCallback() {
@@ -10,7 +10,7 @@ class CustomFooter extends HTMLElement {
         :host {
           display: block;
           width: 100%;
-          margin-top: auto; /* Чтобы футер прилипал к низу при малом контенте */
+          margin-top: auto; /* Р§С‚РѕР±С‹ С„СѓС‚РµСЂ РїСЂРёР»РёРїР°Р» Рє РЅРёР·Сѓ РїСЂРё РјР°Р»РѕРј РєРѕРЅС‚РµРЅС‚Рµ */
         }
 
         footer {
@@ -136,7 +136,7 @@ class CustomFooter extends HTMLElement {
       </footer>
     `;
 
-        // Автоматически обновляем год
+        // РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РѕР±РЅРѕРІР»СЏРµРј РіРѕРґ
         this.shadowRoot.getElementById('year').textContent = new Date().getFullYear();
     }
 }

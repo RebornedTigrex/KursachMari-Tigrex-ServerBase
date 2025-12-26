@@ -157,6 +157,25 @@
                 box-shadow: 0 10px 25px rgba(139, 92, 246, 0.6);
             }
 
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+            .modal.active {
+                opacity: 1;
+                visibility: visible;
+            }
+
         .modal-content {
             background: var(--glass-bg);
             backdrop-filter: blur(20px);
@@ -186,68 +205,69 @@
         </div>
 
         <div class="campaigns-grid" id="campaigns-container">
-            <p class="text-center text-var(--text-secondary)">Загрузка кампаний...</p>
+            <p class="text-center text-[var(--text-secondary)] col-span-full">Загрузка кампаний...</p>
         </div>
     </main>
 
     <!-- Модальное окно -->
-    <div class="modal fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden" id="campaign-modal">
+    <div class="modal" id="campaign-modal">
         <div class="modal-content">
             <h2 class="text-2xl font-bold mb-6" id="modal-title">Новая кампания</h2>
             <form id="campaign-form">
                 <input type="hidden" id="edit-id" value="">
-                <input type="hidden" id="client-id" value="">
 
                 <div class="mb-4">
                     <label class="block text-sm font-medium mb-2">Название кампании</label>
-                    <input type="text" id="campaign-name" required class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                    <input type="text" id="campaign-name" required class="w-full px-4 py-3 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] focus:border-[var(--accent)]">
                 </div>
 
                 <div class="mb-4">
                     <label class="block text-sm font-medium mb-2">Клиент</label>
-                    <select id="campaign-client" required class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                    <select id="campaign-client" required class="w-full px-4 py-3 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] focus:border-[var(--accent)]">
                         <option value="">Выберите клиента</option>
-                        <!-- Опции заполняются JS -->
                     </select>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Бюджет (₽)</label>
-                        <input type="number" id="campaign-budget" min="0" required class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Статус</label>
-                        <select id="campaign-status" class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
-                            <option value="planning">Планируется</option>
-                            <option value="running">Запущена</option>
-                            <option value="paused">Приостановлена</option>
-                            <option value="completed">Завершена</option>
-                        </select>
-                    </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Бюджет (₽)</label>
+                    <input type="number" id="campaign-budget" min="0" required class="w-full px-4 py-3 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] focus:border-[var(--accent)]">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Статус</label>
+                    <select id="campaign-status" class="w-full px-4 py-3 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] focus:border-[var(--accent)]">
+                        <option value="planning">Планирование</option>
+                        <option value="running">Запущена</option>
+                        <option value="paused">Приостановлена</option>
+                        <option value="completed">Завершена</option>
+                    </select>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <div>
                         <label class="block text-sm font-medium mb-2">Дата начала</label>
-                        <input type="date" id="campaign-start" required class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                        <input type="date" id="campaign-start" required class="w-full px-4 py-3 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] focus:border-[var(--accent)]">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Дата окончания</label>
-                        <input type="date" id="campaign-end" class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                        <input type="date" id="campaign-end" class="w-full px-4 py-3 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] focus:border-[var(--accent)]">
                     </div>
                 </div>
 
-                <div class="flex justify-end gap-4">
-                    <button type="button" id="cancel-btn" class="px-6 py-3 rounded-lg border border-var(--glass-border) hover:bg-white/10">
-                        Отмена
-                    </button>
-                    <button type="submit" class="px-6 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium">
+                <div class="flex gap-4">
+                    <button type="submit" class="flex-1 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition">
                         Сохранить
+                    </button>
+                    <button type="button" id="cancel-btn" class="flex-1 py-3 rounded-lg border border-[var(--glass-border)] hover:bg-white/10 transition">
+                        Отмена
                     </button>
                 </div>
             </form>
         </div>
+    </div>
+
+    <div id="notification-container"
+         class="fixed top-4 right-4 z-50 max-w-sm w-full hidden">
     </div>
 
     <custom-footer></custom-footer>
@@ -260,85 +280,91 @@
     <script>
         feather.replace();
 
-        const container = document.getElementById('campaigns-container');
+        const campaignsContainer = document.getElementById('campaigns-container');
         const modal = document.getElementById('campaign-modal');
         const form = document.getElementById('campaign-form');
         const addBtn = document.getElementById('add-campaign-btn');
         const cancelBtn = document.getElementById('cancel-btn');
 
-        async function renderCampaigns() {
-            const [campaigns, clients] = await Promise.all([
-                window.dataCache.getCampaigns(),
-                window.dataCache.getClients()
-            ]);
-
-            const clientMap = Object.fromEntries(clients.map(c => [c.id, c.name]));
-
-            if (campaigns.length === 0) {
-                container.innerHTML = '<p class="text-center text-var(--text-secondary) col-span-full">Кампаний пока нет. Создайте первую!</p>';
-                return;
-            }
-
-            container.innerHTML = campaigns.map(camp => {
-                const spentPercent = camp.budget > 0 ? (camp.spent / camp.budget) * 100 : 0;
-                const roiText = camp.roi ? `${camp.roi.toFixed(2)}x` : '—';
-
-                return `
-                        <div class="campaign-card">
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <div class="campaign-name">${camp.name}</div>
-                                    <div class="client-name">${clientMap[camp.clientId] || 'Клиент удалён'}</div>
-                                    <div class="dates">${camp.startDate} → ${camp.endDate || '—'}</div>
-                                </div>
-                                <span class="status-badge status-${camp.status}">
-                                    ${camp.status === 'planning' ? 'Планируется' :
-                        camp.status === 'running' ? 'Запущена' :
-                            camp.status === 'paused' ? 'Приостановлена' :
-                                'Завершена'}
-                                </span>
-                            </div>
-
-                            <div>
-                                <div class="budget-progress">
-                                    <div class="progress-bar" style="width: ${spentPercent}%"></div>
-                                </div>
-                                <div class="text-sm text-var(--text-secondary)">
-                                    ${new Intl.NumberFormat('ru-RU').format(camp.spent)} ₽ из ${new Intl.NumberFormat('ru-RU').format(camp.budget)} ₽
-                                </div>
-                            </div>
-
-                            <div class="metrics-grid">
-                                <div class="metric">
-                                    <div class="metric-value">${roiText}</div>
-                                    <div class="metric-label">ROI</div>
-                                </div>
-                                <div class="metric">
-                                    <div class="metric-value">${spentPercent.toFixed(0)}%</div>
-                                    <div class="metric-label">Расход</div>
-                                </div>
-                            </div>
-
-                            <div class="flex gap-3 mt-6">
-                                <button onclick="openEditModal(${camp.id})" class="flex-1 py-2 rounded-lg border border-var(--glass-border) hover:bg-white/10 transition">
-                                    <i data-feather="edit-2" class="w-4 h-4 inline mr-1"></i> Редактировать
-                                </button>
-                                <button onclick="deleteCampaign(${camp.id})" class="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition">
-                                    <i data-feather="trash-2" class="w-4 h-4 inline mr-1"></i> Удалить
-                                </button>
-                            </div>
-                        </div>
-                    `;
-            }).join('');
-
-            feather.replace();
-        }
-
         async function populateClientsSelect() {
-            const clients = await window.dataCache.getClients();
+            await window.dataCache.fetchAllData();
+            const clients = window.dataCache.getClients();
             const select = document.getElementById('campaign-client');
             select.innerHTML = '<option value="">Выберите клиента</option>' +
                 clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+
+        async function renderCampaigns() {
+            try {
+                await window.dataCache.fetchAllData();
+                const campaigns = window.dataCache.getCampaigns();
+                const clients = window.dataCache.getClients();
+                const clientMap = Object.fromEntries(clients.map(c => [c.id, c.name]));
+
+                if (campaigns.length === 0) {
+                    campaignsContainer.innerHTML = '<p class="text-center text-[var(--text-secondary)] col-span-full">Кампаний пока нет. Создайте первую!</p>';
+                    return;
+                }
+
+                campaignsContainer.innerHTML = campaigns.map(camp => {
+                    const clientName = clientMap[camp.clientId] || 'Клиент удалён';
+                    const spent = camp.spent || 0;
+                    const budget = camp.budget || 0;
+                    const spentPercent = budget > 0 ? (spent / budget) * 100 : 0;
+                    const roiText = camp.roi !== null && camp.roi !== undefined ? camp.roi + 'x' : '—';
+
+                    return `
+                                <div class="campaign-card">
+                                    <span class="status-badge status-${camp.status}">
+                                        ${camp.status === 'planning' ? 'Планирование' :
+                            camp.status === 'running' ? 'Запущена' :
+                                camp.status === 'paused' ? 'Приостановлена' : 'Завершена'}
+                                    </span>
+                                    <div class="campaign-name">${camp.name || 'Без названия'}</div>
+                                    <div class="client-name">${clientName}</div>
+                                    <div class="dates">
+                                        ${camp.startDate || '?'} — ${camp.endDate || 'не указано'}
+                                    </div>
+
+                                    <div class="budget-progress">
+                                        <div class="progress-bar" style="width: ${spentPercent}%"></div>
+                                    </div>
+                                    <div class="text-sm text-[var(--text-secondary)] mb-4">
+                                        ${new Intl.NumberFormat('ru-RU').format(spent)} ₽ из ${new Intl.NumberFormat('ru-RU').format(budget)} ₽
+                                    </div>
+
+                                    <div class="metrics-grid">
+                                        <div class="metric">
+                                            <div class="metric-value">${roiText}</div>
+                                            <div class="metric-label">ROI</div>
+                                        </div>
+                                        <div class="metric">
+                                            <div class="metric-value">${spentPercent.toFixed(0)}%</div>
+                                            <div class="metric-label">Расход</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex gap-3 mt-6">
+                                        <button onclick="openEditModal(${camp.id})" class="flex-1 py-2 rounded-lg border border-[var(--glass-border)] hover:bg-white/10 transition">
+                                            <i data-feather="edit-2" class="w-4 h-4 inline mr-1"></i> Редактировать
+                                        </button>
+                                        <button onclick="deleteCampaign(${camp.id})" class="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition">
+                                            <i data-feather="trash-2" class="w-4 h-4 inline mr-1"></i> Удалить
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                }).join('');
+
+                feather.replace();
+            } catch (err) {
+                console.error(err);
+
+                // Передаём полный объект ошибки в notifications
+                if (window.notifications) {
+                    window.notifications.showError(err);
+                }
+            }
         }
 
         function openAddModal() {
@@ -346,11 +372,11 @@
             form.reset();
             document.getElementById('edit-id').value = '';
             populateClientsSelect();
-            modal.classList.remove('hidden');
+            modal.classList.add('active');
         }
 
         window.openEditModal = async function (campaignId) {
-            const campaigns = await window.dataCache.getCampaigns();
+            const campaigns = window.dataCache.getCampaigns();
             const camp = campaigns.find(c => c.id === campaignId);
             if (!camp) return;
 
@@ -358,25 +384,30 @@
 
             document.getElementById('modal-title').textContent = 'Редактировать кампанию';
             document.getElementById('edit-id').value = camp.id;
-            document.getElementById('campaign-name').value = camp.name;
-            document.getElementById('campaign-client').value = camp.clientId;
-            document.getElementById('campaign-budget').value = camp.budget;
-            document.getElementById('campaign-status').value = camp.status;
-            document.getElementById('campaign-start').value = camp.startDate;
+            document.getElementById('campaign-name').value = camp.name || '';
+            document.getElementById('campaign-client').value = camp.clientId || '';
+            document.getElementById('campaign-budget').value = camp.budget || '';
+            document.getElementById('campaign-status').value = camp.status || 'planning';
+            document.getElementById('campaign-start').value = camp.startDate || '';
             document.getElementById('campaign-end').value = camp.endDate || '';
 
-            modal.classList.remove('hidden');
+            modal.classList.add('active');
         }
 
         window.deleteCampaign = async function (campaignId) {
-            if (!confirm('Удалить кампанию? Все связанные задачи тоже будут удалены.')) return;
+            if (!confirm('Удалить кампанию? Все связанные задачи также будут удалены.')) return;
 
             try {
                 await window.dataCache.deleteCampaign(campaignId);
-                notifications.showSuccess('Кампания удалена');
+                if (window.notifications) notifications.showSuccess('Кампания удалена');
                 renderCampaigns();
             } catch (err) {
-                notifications.showError(err);
+                console.error(err);
+
+                // Передаём полный объект ошибки в notifications
+                if (window.notifications) {
+                    window.notifications.showError(err);
+                }
             }
         }
 
@@ -395,22 +426,27 @@
             try {
                 if (id) {
                     await window.dataCache.updateCampaign(Number(id), data);
-                    notifications.showSuccess('Кампания обновлена');
+                    if (window.notifications) notifications.showSuccess('Кампания обновлена');
                 } else {
                     await window.dataCache.addCampaign(data);
-                    notifications.showSuccess('Кампания создана');
+                    if (window.notifications) notifications.showSuccess('Кампания создана');
                 }
-                modal.classList.add('hidden');
+                modal.classList.remove('active');
                 renderCampaigns();
             } catch (err) {
-                notifications.showError(err);
+                console.error(err);
+
+                // Передаём полный объект ошибки в notifications
+                if (window.notifications) {
+                    window.notifications.showError(err);
+                }
             }
         });
 
         addBtn.addEventListener('click', openAddModal);
-        cancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
+        cancelBtn.addEventListener('click', () => modal.classList.remove('active'));
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.classList.add('hidden');
+            if (e.target === modal) modal.classList.remove('active');
         });
 
         // Инициализация

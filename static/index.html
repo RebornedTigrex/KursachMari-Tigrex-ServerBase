@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AdHarmony | Дашборд</title>
-    <link rel="stylesheet" href="/style"> <!-- Новый glassmorphism стиль -->
+    <link rel="stylesheet" href="/style">
     <script src="/thirdParty/3.4.17"></script>
     <script src="/thirdParty/feather.min"></script>
     <style>
@@ -29,23 +29,25 @@
             overflow: hidden;
         }
 
-        .metric-card:hover {
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.4);
-        }
+            .metric-card:hover {
+                transform: translateY(-10px) scale(1.02);
+                box-shadow: 0 20px 40px rgba(139, 92, 246, 0.4);
+            }
 
-        .metric-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.6s;
-        }
+            .metric-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+                transition: left 0.6s;
+            }
 
-        .metric-card:hover::before {
-            left: 100%;
-        }
+            .metric-card:hover::before {
+                left: 100%;
+            }
 
         .metric-value {
             font-size: 3rem;
@@ -87,11 +89,11 @@
             border: 1px solid rgba(139, 92, 246, 0.2);
         }
 
-        .action-card:hover {
-            transform: translateY(-8px);
-            background: rgba(139, 92, 246, 0.1);
-            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
-        }
+            .action-card:hover {
+                transform: translateY(-8px);
+                background: rgba(139, 92, 246, 0.1);
+                box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+            }
 
         .action-icon {
             width: 60px;
@@ -105,8 +107,13 @@
         }
 
         @media (max-width: 768px) {
-            .metric-value { font-size: 2.5rem; }
-            .quick-actions { padding: 1.5rem; }
+            .metric-value {
+                font-size: 2.5rem;
+            }
+
+            .quick-actions {
+                padding: 1.5rem;
+            }
         }
     </style>
 </head>
@@ -169,7 +176,7 @@
             </div>
 
             <div class="action-grid">
-                <a href="/clients" class="action-card text-decoration-none">
+                <a href="/clients" class="action-card">
                     <div class="action-icon">
                         <i data-feather="users" class="w-8 h-8 text-var(--accent)"></i>
                     </div>
@@ -204,6 +211,10 @@
         </div>
     </main>
 
+    <div id="notification-container"
+         class="fixed top-4 right-4 z-50 max-w-sm w-full hidden">
+    </div>
+
     <custom-footer></custom-footer>
 
     <!-- Компоненты -->
@@ -211,46 +222,51 @@
     <script src="/components/footer"></script>
 
     <!-- Модули -->
-    <script src="/modules/dataCache.js"></script>
-    <script src="/modules/notifications.js"></script>
+    <script src="/modules/dataCache"></script>
+    <script src="/modules/notifications"></script>
 
     <script>
         feather.replace();
 
-        let dashboardPromise = null;
+        async function updateDashboard() {
+            try {
+                // Сначала гарантируем, что данные загружены
+                await window.dataCache.fetchAllData();
 
-        async function updateDashboard(force = false) {
-            if (dashboardPromise) return dashboardPromise;
+                const dashboard = window.dataCache.getDashboardData();
 
-            dashboardPromise = (async () => {
-                try {
-                    const dashboard = await window.dataCache.getDashboardData();
+                document.getElementById('active-clients').textContent = dashboard.activeClients || 0;
+                document.getElementById('active-campaigns').textContent = dashboard.activeCampaigns || 0;
 
-                    document.getElementById('active-clients').textContent = dashboard.activeClients;
-                    document.getElementById('active-campaigns').textContent = dashboard.activeCampaigns;
-                    document.getElementById('total-budget').textContent = 
-                        new Intl.NumberFormat('ru-RU').format(dashboard.totalBudget) + ' ₽';
-                    document.getElementById('total-spent').textContent = 
-                        new Intl.NumberFormat('ru-RU').format(dashboard.totalSpent) + ' ₽';
-                    document.getElementById('avg-roi').textContent = 
-                        dashboard.avgRoi > 0 ? dashboard.avgRoi + 'x' : '—';
-                    document.getElementById('team-workload').textContent = dashboard.teamWorkload + '%';
-                } catch (err) {
-                    console.warn('Ошибка загрузки дашборда:', err);
-                    window.notifications?.showError(err);
-                } finally {
-                    dashboardPromise = null;
+                document.getElementById('total-budget').textContent =
+                    new Intl.NumberFormat('ru-RU').format(dashboard.totalBudget || 0) + ' ₽';
+
+                document.getElementById('total-spent').textContent =
+                    new Intl.NumberFormat('ru-RU').format(dashboard.totalSpent || 0) + ' ₽';
+
+                const roi = dashboard.avgRoi;
+                document.getElementById('avg-roi').textContent =
+                    roi > 0 ? roi + 'x' : '—';
+
+                document.getElementById('team-workload').textContent =
+                    (dashboard.teamWorkload || 0) + '%';
+            } catch (err) {
+                console.error(err);
+
+                // Передаём полный объект ошибки в notifications
+                if (window.notifications) {
+                    window.notifications.showError(err);
                 }
-            })();
-
-            return dashboardPromise;
+            }
         }
 
-        // Инициализация
-        document.addEventListener('DOMContentLoaded', () => updateDashboard());
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', updateDashboard);
 
-        // Автообновление при изменении кэша (например, после добавления клиента)
-        window.addEventListener('dataCache:updated', () => updateDashboard(true));
+        // Автообновление при изменении данных в кэше (например, после добавления клиента или кампании)
+        window.addEventListener('dataCache:updated', () => {
+            updateDashboard();
+        });
     </script>
 </body>
 </html>

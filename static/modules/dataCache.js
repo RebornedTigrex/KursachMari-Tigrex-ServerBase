@@ -1,18 +1,23 @@
-// modules/dataCache.js - Переработанный Data Cache Module для веб-приложения рекламного агентства
-// Основные сущности: Клиенты, Кампании, Задачи, Команда (сотрудники), Метрики/Отчеты
-// Добавлены полноценные CRUD-методы с optimistic updates и proper error propagation
-// Поддержка дашборда с ключевыми метриками агентства (активные кампании, бюджет, ROI и т.д.)
+﻿// modules/dataCache.js - Полностью исправленная и расширенная версия Data Cache Module
+// Поддерживает все сущности: Clients, Campaigns, Tasks, Team
+// Обеспечивает синхронизацию данных между всеми страницами MVP
 
 class DataCache {
     constructor(options = {}) {
         this.storageKey = options.storageKey || 'ad_agency_cache_v1';
         this.cache = {
-            dashboard: null,
-            clients: [],          // Array of {id, name, contact, status, totalBudget, campaignsCount}
-            campaigns: [],        // Array of {id, clientId, name, status, budget, spent, startDate, endDate, roi}
-            tasks: [],            // Array of {id, campaignId, assigneeId, title, description, status, dueDate}
-            team: [],             // Array of {id, fullname, role, workload} // workload - % загруженности
-            metrics: [],          // Дополнительные метрики по кампаниям
+            dashboard: {
+                activeClients: 0,
+                activeCampaigns: 0,
+                totalBudget: 0,
+                totalSpent: 0,
+                avgRoi: 0,
+                teamWorkload: 0
+            },
+            clients: [],          // {id, name, contact, status, totalBudget, campaignsCount}
+            campaigns: [],        // {id, clientId, name, status, budget, spent, startDate, endDate, roi}
+            tasks: [],            // {id, campaignId, assigneeId, title, description, status, dueDate}
+            team: [],             // {id, fullname, role, workload}
             lastUpdated: null
         };
 
@@ -22,7 +27,7 @@ class DataCache {
         this._loadFromStorage();
     }
 
-    // --- Persistence helpers (без изменений) ---
+    // --- Persistence & helpers ---
     _loadFromStorage() {
         if (!this.enablePersistence) return;
         try {
@@ -48,153 +53,136 @@ class DataCache {
     _markUpdated() {
         this.cache.lastUpdated = new Date().toISOString();
         this._saveToStorage();
-        try {
-            window.dispatchEvent(new CustomEvent('dataCache:updated', { detail: { lastUpdated: this.cache.lastUpdated } }));
-        } catch (e) { }
+        window.dispatchEvent(new CustomEvent('dataCache:updated', { detail: { lastUpdated: this.cache.lastUpdated } }));
     }
 
     _isCacheExpired() {
         if (!this.cache.lastUpdated) return true;
-        const now = new Date();
-        const last = new Date(this.cache.lastUpdated);
-        const diffInMinutes = (now - last) / (1000 * 60);
-        return diffInMinutes > 5; // 5-minute TTL
+        const diffInMinutes = (Date.now() - new Date(this.cache.lastUpdated)) / (1000 * 60);
+        return diffInMinutes > 5; // 5 минут TTL
     }
 
-    // --- Network helper (без изменений) ---
-    async _syncToServer(method, path, body, options = {}) {
+    async _syncToServer(method, path, body) {
         try {
-            const url = `${this.apiBaseUrl}${path}`;
-            const headers = { 'Content-Type': 'application/json' };
-
-            const res = await fetch(url, {
+            const res = await fetch(`${this.apiBaseUrl}${path}`, {
                 method,
-                headers,
-                body: body ? JSON.stringify(body) : undefined,
-                ...options
+                headers: { 'Content-Type': 'application/json' },
+                body: body ? JSON.stringify(body) : undefined
             });
 
             if (!res.ok) {
                 const text = await res.text();
-                const error = {
-                    status: res.status,
-                    statusText: res.statusText,
-                    body: text
-                };
-                throw error;
+                throw { status: res.status, statusText: res.statusText, body: text };
             }
 
-            const data = await res.json();
-
-            if (data.lastUpdated && new Date(data.lastUpdated) > new Date(this.cache.lastUpdated || 0)) {
-                this.cache.lastUpdated = data.lastUpdated;
-            }
-            return data;
+            return await res.json();
         } catch (err) {
             throw err;
         }
     }
 
-    setOptions(opts = {}) {
-        if (typeof opts.apiBaseUrl === 'string') this.apiBaseUrl = opts.apiBaseUrl;
-        if (typeof opts.enablePersistence === 'boolean') this.enablePersistence = opts.enablePersistence;
-        if (opts.storageKey) this.storageKey = opts.storageKey;
-        this._saveToStorage();
+    // --- Вычисление дашборда и связанных метрик ---
+    _computeDashboard() {
+        const activeClients = this.cache.clients.filter(c => c.status === 'active').length;
+
+        const activeCampaigns = this.cache.campaigns.filter(c => c.status === 'running');
+        const totalBudget = activeCampaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
+        const totalSpent = activeCampaigns.reduce((sum, c) => sum + (c.spent || 0), 0);
+
+        const completedCampaigns = this.cache.campaigns.filter(c => c.status === 'completed' && c.roi !== undefined);
+        const avgRoi = completedCampaigns.length > 0
+            ? completedCampaigns.reduce((sum, c) => sum + c.roi, 0) / completedCampaigns.length
+            : 0;
+
+        const totalWorkload = this.cache.team.reduce((sum, m) => sum + (m.workload || 0), 0);
+        const teamWorkload = this.cache.team.length > 0 ? Math.round(totalWorkload / this.cache.team.length) : 0;
+
+        this.cache.dashboard = {
+            activeClients,
+            activeCampaigns: activeCampaigns.length,
+            totalBudget,
+            totalSpent,
+            avgRoi: avgRoi.toFixed(2),
+            teamWorkload
+        };
     }
 
-    // --- Public API ---
+    recalculateWorkload() {
+        this.cache.team.forEach(member => {
+            const activeTasks = this.cache.tasks.filter(t =>
+                t.assigneeId === member.id && (t.status === 'todo' || t.status === 'in_progress')
+            ).length;
+            member.workload = Math.min(100, activeTasks * 20); // простая логика для MVP
+        });
+        this._computeDashboard();
+    }
+
+    // --- Public API: загрузка и геттеры ---
     async fetchAllData(forceRefresh = false) {
-        if (!forceRefresh && !this._isCacheExpired()) {
+        if (!forceRefresh && !this._isCacheExpired() && this.cache.clients.length > 0) {
             return this.cache;
         }
 
         try {
             const serverData = await this._syncToServer('GET', '/all-data');
-            if (serverData) {
-                this.cache = { ...this.cache, ...serverData };
-                this._computeDashboard();
-                this._markUpdated();
-                return this.cache;
-            }
+            this.cache = { ...this.cache, ...serverData };
         } catch (err) {
-            console.warn('Using local cache due to network error:', err);
+            console.warn('Network error, using local cache:', err);
         }
 
-        // Fallback mock data если кэш пуст
-        if (!this.cache.clients.length) {
+        // Если кэш пуст — загружаем мок-данные (для демонстрации MVP)
+        if (this.cache.clients.length === 0) {
             this._loadMockData();
         }
+
+        this.recalculateWorkload();
         this._computeDashboard();
         this._markUpdated();
         return this.cache;
     }
 
+    getClients() { return this.cache.clients; }
+    getCampaigns() { return this.cache.campaigns; }
+    getTasks() { return this.cache.tasks; }
+    getTeam() { return this.cache.team; }
+    getDashboardData() { return this.cache.dashboard; }
+
     _loadMockData() {
         this.cache.clients = [
-            { id: 1, name: 'Компания А', contact: 'Иван Иванов', status: 'active', totalBudget: 500000, campaignsCount: 3 },
-            { id: 2, name: 'Бренд Б', contact: 'Мария Петрова', status: 'active', totalBudget: 300000, campaignsCount: 2 },
+            { id: 1, name: 'Компания А', contact: 'Иван Иванов', status: 'active', totalBudget: 800000, campaignsCount: 3 },
+            { id: 2, name: 'Бренд Б', contact: 'Мария Петрова', status: 'active', totalBudget: 450000, campaignsCount: 2 },
             { id: 3, name: 'Стартап В', contact: 'Алексей Сидоров', status: 'prospect', totalBudget: 0, campaignsCount: 0 }
         ];
+
         this.cache.campaigns = [
-            { id: 1, clientId: 1, name: 'Летняя акция', status: 'running', budget: 200000, spent: 120000, startDate: '2025-06-01', endDate: '2025-09-01', roi: 2.4 },
-            { id: 2, clientId: 1, name: 'SMM продвижение', status: 'planning', budget: 150000, spent: 0, startDate: '2025-12-01', endDate: '2026-03-01', roi: null }
+            { id: 1, clientId: 1, name: 'Летняя акция', status: 'running', budget: 300000, spent: 150000, startDate: '2025-06-01', endDate: '2025-09-01', roi: null },
+            { id: 2, clientId: 1, name: 'Новогодняя', status: 'completed', budget: 500000, spent: 480000, startDate: '2024-12-01', endDate: '2025-01-15', roi: 2.4 },
+            { id: 3, clientId: 2, name: 'Ребрендинг', status: 'running', budget: 450000, spent: 200000, startDate: '2025-10-01', endDate: null, roi: null }
         ];
-        this.cache.tasks = [
-            { id: 1, campaignId: 1, assigneeId: 1, title: 'Создать баннеры', description: '', status: 'in_progress', dueDate: '2025-12-30' }
-        ];
+
         this.cache.team = [
-            { id: 1, fullname: 'Анна Креатив', role: 'Дизайнер', workload: 85 },
-            { id: 2, fullname: 'Дмитрий Таргетолог', role: 'Специалист по рекламе', workload: 70 }
+            { id: 1, fullname: 'Анна Ковалёва', role: 'Аккаунт-менеджер', workload: 60 },
+            { id: 2, fullname: 'Дмитрий Смирнов', role: 'Креативный директор', workload: 80 },
+            { id: 3, fullname: 'Елена Морозова', role: 'Медиапланер', workload: 40 }
+        ];
+
+        this.cache.tasks = [
+            { id: 1, campaignId: 1, assigneeId: 1, title: 'Подготовка креативов', description: '', status: 'in_progress', dueDate: '2025-12-30' },
+            { id: 2, campaignId: 1, assigneeId: 2, title: 'Утверждение макетов', description: '', status: 'todo', dueDate: '2025-12-28' },
+            { id: 3, campaignId: 3, assigneeId: 3, title: 'Медиаплан', description: '', status: 'done', dueDate: '2025-11-15' }
         ];
     }
 
-    _computeDashboard() {
-        const activeCampaigns = this.cache.campaigns.filter(c => c.status === 'running');
-        const totalBudget = activeCampaigns.reduce((sum, c) => sum + c.budget, 0);
-        const totalSpent = activeCampaigns.reduce((sum, c) => sum + c.spent, 0);
-        const avgRoi = activeCampaigns.filter(c => c.roi).reduce((sum, c) => sum + c.roi, 0) / activeCampaigns.filter(c => c.roi).length || 0;
-
-        this.cache.dashboard = {
-            activeClients: this.cache.clients.filter(cl => cl.status === 'active').length,
-            activeCampaigns: activeCampaigns.length,
-            totalBudget,
-            totalSpent,
-            avgRoi: avgRoi.toFixed(2),
-            teamWorkload: Math.round(this.cache.team.reduce((sum, t) => sum + t.workload, 0) / this.cache.team.length || 0)
-        };
-    }
-
-    async getDashboardData() {
-        await this.fetchAllData();
-        return this.cache.dashboard;
-    }
-
-    async getClients() {
-        await this.fetchAllData();
-        return this.cache.clients;
-    }
-
-    async getCampaigns(clientId = null) {
-        await this.fetchAllData();
-        if (clientId) return this.cache.campaigns.filter(c => c.clientId === clientId);
-        return this.cache.campaigns;
-    }
-
-    async getTasks(campaignId = null) {
-        await this.fetchAllData();
-        if (campaignId) return this.cache.tasks.filter(t => t.campaignId === campaignId);
-        return this.cache.tasks;
-    }
-
-    async getTeam() {
-        await this.fetchAllData();
-        return this.cache.team;
-    }
-
-    // ---------- CRUD для Клиентов ----------
+    // --- CRUD: Clients ---
     async addClient(clientData) {
         const tempId = Date.now();
-        const newClient = { id: tempId, status: 'prospect', campaignsCount: 0, totalBudget: 0, ...clientData };
+        const newClient = {
+            id: tempId,
+            status: 'prospect',
+            totalBudget: 0,
+            campaignsCount: 0,
+            ...clientData
+        };
 
         this.cache.clients.push(newClient);
         this._computeDashboard();
@@ -208,7 +196,7 @@ class DataCache {
             }
             await this.fetchAllData(true);
         } catch (error) {
-            throw error; // Для notifications.js
+            throw error;
         }
         return newClient;
     }
@@ -234,9 +222,13 @@ class DataCache {
         const idx = this.cache.clients.findIndex(c => c.id === clientId);
         if (idx === -1) throw new Error('Client not found');
 
+        // Удаляем связанные кампании и задачи
+        const campaignsToDelete = this.cache.campaigns.filter(c => c.clientId === clientId);
+        for (const camp of campaignsToDelete) {
+            await this.deleteCampaign(camp.id, false); // false — не рекурсивно триггерить fetchAllData
+        }
+
         this.cache.clients.splice(idx, 1);
-        this.cache.campaigns = this.cache.campaigns.filter(c => c.clientId !== clientId);
-        this.cache.tasks = this.cache.tasks.filter(t => this.cache.campaigns.some(camp => camp.id === t.campaignId)); // Каскадно
         this._computeDashboard();
         this._markUpdated();
 
@@ -248,17 +240,28 @@ class DataCache {
         }
     }
 
-    // ---------- CRUD для Кампаний ----------
+    // --- CRUD: Campaigns ---
     async addCampaign(campaignData) {
         const tempId = Date.now();
-        const newCampaign = { id: tempId, status: 'planning', spent: 0, roi: null, ...campaignData };
+        const newCampaign = {
+            id: tempId,
+            status: 'planning',
+            spent: 0,
+            roi: null,
+            ...campaignData
+        };
 
         this.cache.campaigns.push(newCampaign);
-        const client = this.cache.clients.find(c => c.id === campaignData.clientId);
+
+        // Обновляем клиента
+        const client = this.cache.clients.find(c => c.id === newCampaign.clientId);
         if (client) {
-            client.campaignsCount += 1;
-            client.totalBudget += campaignData.budget || 0;
+            client.campaignsCount++;
+            if (newCampaign.status === 'running') {
+                client.totalBudget += newCampaign.budget;
+            }
         }
+
         this._computeDashboard();
         this._markUpdated();
 
@@ -279,7 +282,25 @@ class DataCache {
         const campaign = this.cache.campaigns.find(c => c.id === campaignId);
         if (!campaign) throw new Error('Campaign not found');
 
+        const oldStatus = campaign.status;
+        const oldBudget = campaign.budget || 0;
+
         Object.assign(campaign, changes);
+
+        // Пересчитываем бюджет клиента при изменении статуса или бюджета
+        const client = this.cache.clients.find(c => c.id === campaign.clientId);
+        if (client) {
+            if (oldStatus === 'running' && changes.status !== 'running') {
+                client.totalBudget -= oldBudget;
+            }
+            if (changes.status === 'running' && oldStatus !== 'running') {
+                client.totalBudget += (changes.budget || campaign.budget || 0);
+            }
+            if (changes.budget !== undefined && oldStatus === 'running' && changes.status === 'running') {
+                client.totalBudget += (changes.budget - oldBudget);
+            }
+        }
+
         this._computeDashboard();
         this._markUpdated();
 
@@ -292,38 +313,44 @@ class DataCache {
         return campaign;
     }
 
-    async deleteCampaign(campaignId) {
+    async deleteCampaign(campaignId, refresh = true) {
         const idx = this.cache.campaigns.findIndex(c => c.id === campaignId);
         if (idx === -1) throw new Error('Campaign not found');
 
-        const clientId = this.cache.campaigns[idx].clientId;
-        this.cache.campaigns.splice(idx, 1);
+        const campaign = this.cache.campaigns[idx];
+
+        // Удаляем связанные задачи
         this.cache.tasks = this.cache.tasks.filter(t => t.campaignId !== campaignId);
 
-        const client = this.cache.clients.find(c => c.id === clientId);
-        if (client) client.campaignsCount = Math.max(0, client.campaignsCount - 1);
+        // Обновляем клиента
+        const client = this.cache.clients.find(c => c.id === campaign.clientId);
+        if (client) {
+            client.campaignsCount--;
+            if (campaign.status === 'running') {
+                client.totalBudget -= (campaign.budget || 0);
+            }
+        }
 
+        this.cache.campaigns.splice(idx, 1);
+        this.recalculateWorkload();
         this._computeDashboard();
         this._markUpdated();
 
         try {
             await this._syncToServer('DELETE', `/campaigns/${campaignId}`);
-            await this.fetchAllData(true);
+            if (refresh) await this.fetchAllData(true);
         } catch (error) {
             throw error;
         }
     }
 
-    // ---------- CRUD для Задач ----------
+    // --- CRUD: Tasks (оставлены без изменений, но добавлен пересчёт workload) ---
     async addTask(taskData) {
         const tempId = Date.now();
-        const newTask = {
-            id: tempId,
-            status: 'todo', // по умолчанию
-            ...taskData
-        };
+        const newTask = { id: tempId, status: 'todo', ...taskData };
 
         this.cache.tasks.push(newTask);
+        this.recalculateWorkload();
         this._computeDashboard();
         this._markUpdated();
 
@@ -345,6 +372,7 @@ class DataCache {
         if (!task) throw new Error('Task not found');
 
         Object.assign(task, changes);
+        this.recalculateWorkload();
         this._computeDashboard();
         this._markUpdated();
 
@@ -362,6 +390,7 @@ class DataCache {
         if (idx === -1) throw new Error('Task not found');
 
         this.cache.tasks.splice(idx, 1);
+        this.recalculateWorkload();
         this._computeDashboard();
         this._markUpdated();
 
@@ -373,14 +402,10 @@ class DataCache {
         }
     }
 
-    // ---------- CRUD для Команды (Сотрудников агентства) ----------
+    // --- CRUD: Team ---
     async addTeamMember(memberData) {
         const tempId = Date.now();
-        const newMember = {
-            id: tempId,
-            workload: 0, // по умолчанию
-            ...memberData
-        };
+        const newMember = { id: tempId, workload: 0, ...memberData };
 
         this.cache.team.push(newMember);
         this._computeDashboard();
@@ -420,10 +445,11 @@ class DataCache {
         const idx = this.cache.team.findIndex(m => m.id === memberId);
         if (idx === -1) throw new Error('Team member not found');
 
-        // Удаляем назначенные задачи (опционально: можно переназначить, но для MVP просто удаляем)
-        this.cache.tasks = this.cache.tasks.filter(t => t.assigneeId !== memberId);
+        // Снимаем задачи с удалённого сотрудника
+        this.cache.tasks = this.cache.tasks.map(t => t.assigneeId === memberId ? { ...t, assigneeId: null } : t);
 
         this.cache.team.splice(idx, 1);
+        this.recalculateWorkload();
         this._computeDashboard();
         this._markUpdated();
 
@@ -435,37 +461,17 @@ class DataCache {
         }
     }
 
-    // Дополнительные удобные методы (не CRUD, но полезны для UI)
-    async getTasksForCampaign(campaignId) {
-        await this.fetchAllData();
-        return this.cache.tasks.filter(t => t.campaignId === campaignId);
-    }
-
-    async getTasksForAssignee(assigneeId) {
-        await this.fetchAllData();
-        return this.cache.tasks.filter(t => t.assigneeId === assigneeId);
-    }
-
-    async recalculateWorkload() {
-        // Пример простой логики: workload = (кол-во задач in_progress + todo) * 20%
-        this.cache.team.forEach(member => {
-            const activeTasks = this.cache.tasks.filter(t =>
-                t.assigneeId === member.id && (t.status === 'in_progress' || t.status === 'todo')
-            ).length;
-            member.workload = Math.min(100, activeTasks * 20);
-        });
-        this._computeDashboard();
-        this._markUpdated();
-    }
-
     clearCache() {
-        this.cache = { dashboard: null, clients: [], campaigns: [], tasks: [], team: [], metrics: [], lastUpdated: null };
-        try { localStorage.removeItem(this.storageKey); } catch (e) { }
+        this.cache = {
+            dashboard: { activeClients: 0, activeCampaigns: 0, totalBudget: 0, totalSpent: 0, avgRoi: 0, teamWorkload: 0 },
+            clients: [], campaigns: [], tasks: [], team: [], lastUpdated: null
+        };
+        localStorage.removeItem(this.storageKey);
         this._markUpdated();
     }
 }
 
-// Initialize and expose globally
+// Глобальная инициализация
 if (!window.dataCache) {
-    window.dataCache = new DataCache();
+    window.dataCache = new DataCache({ enablePersistence: true });
 }

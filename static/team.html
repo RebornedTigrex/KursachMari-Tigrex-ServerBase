@@ -66,6 +66,7 @@
             margin: 0 auto 1.5rem;
             font-size: 3rem;
             color: var(--accent);
+            font-weight: 700;
         }
 
         .member-name {
@@ -73,6 +74,7 @@
             font-weight: 700;
             text-align: center;
             margin-bottom: 0.5rem;
+            color: var(--text-primary);
         }
 
         .member-role {
@@ -110,6 +112,7 @@
             text-align: center;
             color: var(--text-secondary);
             margin-top: 0.5rem;
+            font-size: 0.95rem;
         }
 
         .add-button {
@@ -125,6 +128,25 @@
             .add-button:hover {
                 transform: translateY(-3px);
                 box-shadow: 0 10px 25px rgba(139, 92, 246, 0.6);
+            }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+            .modal.active {
+                opacity: 1;
+                visibility: visible;
             }
 
         .modal-content {
@@ -156,12 +178,12 @@
         </div>
 
         <div class="team-grid" id="team-container">
-            <p class="text-center text-var(--text-secondary)">Загрузка команды...</p>
+            <p class="text-center text-[var(--text-secondary)] col-span-full">Загрузка команды...</p>
         </div>
     </main>
 
     <!-- Модальное окно -->
-    <div class="modal fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden" id="member-modal">
+    <div class="modal" id="member-modal">
         <div class="modal-content">
             <h2 class="text-2xl font-bold mb-6" id="modal-title">Добавить сотрудника</h2>
             <form id="member-form">
@@ -169,24 +191,28 @@
 
                 <div class="mb-4">
                     <label class="block text-sm font-medium mb-2">ФИО</label>
-                    <input type="text" id="member-name" required class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                    <input type="text" id="member-name" required class="w-full px-4 py-3 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] focus:border-[var(--accent)]">
                 </div>
 
                 <div class="mb-6">
-                    <label class="block text-sm font-medium mb-2">Роль / Должность</label>
-                    <input type="text" id="member-role" required class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                    <label class="block text-sm font-medium mb-2">Должность</label>
+                    <input type="text" id="member-role" required class="w-full px-4 py-3 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] focus:border-[var(--accent)]">
                 </div>
 
-                <div class="flex justify-end gap-4">
-                    <button type="button" id="cancel-btn" class="px-6 py-3 rounded-lg border border-var(--glass-border) hover:bg-white/10">
-                        Отмена
-                    </button>
-                    <button type="submit" class="px-6 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium">
+                <div class="flex gap-4">
+                    <button type="submit" class="flex-1 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition">
                         Сохранить
+                    </button>
+                    <button type="button" id="cancel-btn" class="flex-1 py-3 rounded-lg border border-[var(--glass-border)] hover:bg-white/10 transition">
+                        Отмена
                     </button>
                 </div>
             </form>
         </div>
+    </div>
+
+    <div id="notification-container"
+         class="fixed top-4 right-4 z-50 max-w-sm w-full hidden">
     </div>
 
     <custom-footer></custom-footer>
@@ -202,91 +228,106 @@
         const container = document.getElementById('team-container');
         const modal = document.getElementById('member-modal');
         const form = document.getElementById('member-form');
+        const modalTitle = document.getElementById('modal-title');
         const addBtn = document.getElementById('add-member-btn');
         const cancelBtn = document.getElementById('cancel-btn');
 
         async function renderTeam() {
-            const team = await window.dataCache.getTeam();
-            const tasks = await window.dataCache.getTasks();
+            try {
+                await window.dataCache.fetchAllData();
+                const team = window.dataCache.getTeam();
+                const tasks = window.dataCache.getTasks();
 
-            if (team.length === 0) {
-                container.innerHTML = '<p class="text-center text-var(--text-secondary) col-span-full">Команда пока пуста. Добавьте первого сотрудника!</p>';
-                return;
-            }
-
-            // Подсчёт активных задач для каждого сотрудника
-            const taskCounts = {};
-            tasks.forEach(t => {
-                if (t.status !== 'done') { // только не завершённые
-                    taskCounts[t.assigneeId] = (taskCounts[t.assigneeId] || 0) + 1;
+                if (team.length === 0) {
+                    container.innerHTML = '<p class="text-center text-[var(--text-secondary)] col-span-full">Команда пока пуста. Добавьте первого сотрудника!</p>';
+                    return;
                 }
-            });
 
-            container.innerHTML = team.map(member => {
-                const activeTasks = taskCounts[member.id] || 0;
-                const workload = Math.min(100, activeTasks * 20);
+                // Подсчёт активных задач (todo + in_progress)
+                const activeTaskCounts = {};
+                tasks.forEach(t => {
+                    if (t.status !== 'done' && t.assigneeId) {
+                        activeTaskCounts[t.assigneeId] = (activeTaskCounts[t.assigneeId] || 0) + 1;
+                    }
+                });
 
-                // Первая буква имени для аватара
-                const initials = member.fullname.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                container.innerHTML = team.map(member => {
+                    const activeTasks = activeTaskCounts[member.id] || 0;
+                    const workload = Math.min(100, activeTasks * 20); // логика из DataCache
+                    const initials = member.fullname
+                        .split(' ')
+                        .map(n => n[0])
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2);
 
-                return `
-                        <div class="member-card">
-                            <div class="member-avatar">${initials}</div>
-                            <div class="member-name">${member.fullname}</div>
-                            <div class="member-role">${member.role}</div>
+                    return `
+                                <div class="member-card">
+                                    <div class="member-avatar">${initials}</div>
+                                    <div class="member-name">${member.fullname || 'Без имени'}</div>
+                                    <div class="member-role">${member.role || 'Должность не указана'}</div>
 
-                            <div class="workload-bar">
-                                <div class="workload-fill" style="width: ${workload}%"></div>
-                            </div>
-                            <div class="workload-text">${workload}%</div>
+                                    <div class="workload-bar">
+                                        <div class="workload-fill" style="width: ${workload}%"></div>
+                                    </div>
+                                    <div class="workload-text">${workload}%</div>
 
-                            <div class="tasks-count">
-                                Активных задач: ${activeTasks}
-                            </div>
+                                    <div class="tasks-count">
+                                        Активных задач: ${activeTasks}
+                                    </div>
 
-                            <div class="flex gap-3 mt-6">
-                                <button onclick="openEditModal(${member.id})" class="flex-1 py-2 rounded-lg border border-var(--glass-border) hover:bg-white/10 transition">
-                                    <i data-feather="edit-2" class="w-4 h-4 inline mr-1"></i> Редактировать
-                                </button>
-                                <button onclick="deleteMember(${member.id})" class="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition">
-                                    <i data-feather="trash-2" class="w-4 h-4 inline mr-1"></i> Удалить
-                                </button>
-                            </div>
-                        </div>
-                    `;
-            }).join('');
+                                    <div class="flex gap-3 mt-6">
+                                        <button onclick="openEditModal(${member.id})" class="flex-1 py-2 rounded-lg border border-[var(--glass-border)] hover:bg-white/10 transition">
+                                            <i data-feather="edit-2" class="w-4 h-4 inline mr-1"></i> Редактировать
+                                        </button>
+                                        <button onclick="deleteMember(${member.id})" class="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition">
+                                            <i data-feather="trash-2" class="w-4 h-4 inline mr-1"></i> Удалить
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                }).join('');
 
-            feather.replace();
+                feather.replace();
+            } catch (err) {
+                container.innerHTML = '<p class="text-center text-red-400 col-span-full">Ошибка загрузки команды</p>';
+                console.error(err);
+            }
         }
 
         function openAddModal() {
-            document.getElementById('modal-title').textContent = 'Добавить сотрудника';
+            modalTitle.textContent = 'Добавить сотрудника';
             form.reset();
             document.getElementById('edit-id').value = '';
-            modal.classList.remove('hidden');
+            modal.classList.add('active');
         }
 
         window.openEditModal = async function (memberId) {
-            const team = await window.dataCache.getTeam();
+            const team = window.dataCache.getTeam();
             const member = team.find(m => m.id === memberId);
             if (!member) return;
 
-            document.getElementById('modal-title').textContent = 'Редактировать сотрудника';
+            modalTitle.textContent = 'Редактировать сотрудника';
             document.getElementById('edit-id').value = member.id;
-            document.getElementById('member-name').value = member.fullname;
-            document.getElementById('member-role').value = member.role;
-            modal.classList.remove('hidden');
+            document.getElementById('member-name').value = member.fullname || '';
+            document.getElementById('member-role').value = member.role || '';
+            modal.classList.add('active');
         }
 
         window.deleteMember = async function (memberId) {
-            if (!confirm('Удалить сотрудника? Все назначенные задачи будут сняты.')) return;
+            if (!confirm('Удалить сотрудника? Все назначенные задачи будут сняты с него.')) return;
 
             try {
                 await window.dataCache.deleteTeamMember(memberId);
-                notifications.showSuccess('Сотрудник удалён');
+                if (window.notifications) notifications.showSuccess('Сотрудник удалён');
                 renderTeam();
             } catch (err) {
-                notifications.showError(err);
+                console.error(err);
+
+                // Передаём полный объект ошибки в notifications
+                if (window.notifications) {
+                    window.notifications.showError(err);
+                }
             }
         }
 
@@ -301,21 +342,26 @@
             try {
                 if (id) {
                     await window.dataCache.updateTeamMember(Number(id), data);
-                    notifications.showSuccess('Сотрудник обновлён');
+                    if (window.notifications) notifications.showSuccess('Сотрудник обновлён');
                 } else {
                     await window.dataCache.addTeamMember(data);
-                    notifications.showSuccess('Сотрудник добавлен');
+                    if (window.notifications) notifications.showSuccess('Сотрудник добавлен');
                 }
-                modal.classList.add('hidden');
+                modal.classList.remove('active');
                 renderTeam();
             } catch (err) {
-                notifications.showError(err);
+                console.error(err);
+
+                // Передаём полный объект ошибки в notifications
+                if (window.notifications) {
+                    window.notifications.showError(err);
+                }
             }
         });
 
         addBtn.addEventListener('click', openAddModal);
-        cancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
-        modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
+        cancelBtn.addEventListener('click', () => modal.classList.remove('active'));
+        modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('active'); });
 
         // Инициализация
         document.addEventListener('DOMContentLoaded', renderTeam);

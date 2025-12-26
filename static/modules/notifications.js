@@ -1,13 +1,17 @@
-// modules/notifications.js - Module for handling dynamic notifications
+﻿// modules/notifications.js - Module for handling dynamic notifications
 
 window.notifications = (function () {
     const container = document.getElementById('notification-container');
 
     function createNotificationElement(message, type) {
         const div = document.createElement('div');
-        div.className = `px-4 py-2 rounded-lg shadow-lg ${
-            type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-        }`;
+        div.className = `
+        px-6 py-4 rounded-xl shadow-2xl backdrop-blur-lg border border-white/10
+        text-white font-medium min-w-80 transform transition-all duration-300
+        ${type === 'success'
+                ? 'bg-gradient-to-r from-green-600 to-emerald-600'
+                : 'bg-gradient-to-r from-red-600 to-rose-600'}
+    `;
         div.innerHTML = message;
         return div;
     }

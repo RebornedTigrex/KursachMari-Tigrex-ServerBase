@@ -172,12 +172,11 @@
         </div>
 
         <div class="clients-grid" id="clients-container">
-            <!-- Клиенты будут вставлены через JS -->
-            <p class="text-center text-var(--text-secondary)">Загрузка клиентов...</p>
+            <p class="text-center text-gray-400 col-span-full">Загрузка клиентов...</p>
         </div>
     </main>
 
-    <!-- Модальное окно добавления/редактирования -->
+    <!-- Модальное окно -->
     <div class="modal" id="client-modal">
         <div class="modal-content">
             <h2 class="text-2xl font-bold mb-6" id="modal-title">Добавить клиента</h2>
@@ -185,33 +184,37 @@
                 <input type="hidden" id="edit-id" value="">
 
                 <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">Название компании / ФИО</label>
-                    <input type="text" id="client-name" required class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                    <label class="block text-sm font-medium mb-2">Название компании</label>
+                    <input type="text" id="client-name" required class="w-full px-4 py-3 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] focus:border-[var(--accent)]">
                 </div>
 
                 <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">Контактное лицо / Email / Телефон</label>
-                    <input type="text" id="client-contact" required class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                    <label class="block text-sm font-medium mb-2">Контактное лицо</label>
+                    <input type="text" id="client-contact" required class="w-full px-4 py-3 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] focus:border-[var(--accent)]">
                 </div>
 
                 <div class="mb-6">
                     <label class="block text-sm font-medium mb-2">Статус</label>
-                    <select id="client-status" class="w-full px-4 py-3 rounded-lg bg-var(--glass-bg) border border-var(--glass-border) focus:border-var(--accent)">
+                    <select id="client-status" class="w-full px-4 py-3 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] focus:border-[var(--accent)]">
                         <option value="prospect">Потенциальный</option>
                         <option value="active">Активный</option>
                     </select>
                 </div>
 
-                <div class="flex justify-end gap-4">
-                    <button type="button" id="cancel-btn" class="px-6 py-3 rounded-lg border border-var(--glass-border) hover:bg-white/10">
-                        Отмена
-                    </button>
-                    <button type="submit" class="px-6 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium">
+                <div class="flex gap-4">
+                    <button type="submit" class="flex-1 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition">
                         Сохранить
+                    </button>
+                    <button type="button" id="cancel-btn" class="flex-1 py-3 rounded-lg border border-[var(--glass-border)] hover:bg-white/10 transition">
+                        Отмена
                     </button>
                 </div>
             </form>
         </div>
+    </div>
+
+    <div id="notification-container"
+         class="fixed top-4 right-4 z-50 max-w-sm w-full hidden">
     </div>
 
     <custom-footer></custom-footer>
@@ -232,48 +235,58 @@
         const cancelBtn = document.getElementById('cancel-btn');
 
         async function renderClients() {
-            const clients = await window.dataCache.getClients();
+            try {
+                await window.dataCache.fetchAllData();
+                const clients = window.dataCache.getClients();
 
-            if (clients.length === 0) {
-                clientsContainer.innerHTML = '<p class="text-center text-var(--text-secondary) col-span-full">Клиентов пока нет. Добавьте первого!</p>';
-                return;
+                if (clients.length === 0) {
+                    clientsContainer.innerHTML = '<p class="text-center text-[var(--text-secondary)] col-span-full">Клиентов пока нет. Добавьте первого!</p>';
+                    return;
+                }
+
+                clientsContainer.innerHTML = clients.map(client => `
+                            <div class="client-card">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <div class="client-name">${client.name || 'Без названия'}</div>
+                                        <div class="client-contact">${client.contact || 'Контакт не указан'}</div>
+                                    </div>
+                                    <span class="status-badge status-${client.status}">
+                                        ${client.status === 'active' ? 'Активный' : 'Потенциальный'}
+                                    </span>
+                                </div>
+
+                                <div class="client-stats">
+                                    <div class="stat-item">
+                                        <div class="stat-value">${client.campaignsCount || 0}</div>
+                                        <div class="stat-label">Кампаний</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-value">${new Intl.NumberFormat('ru-RU').format(client.totalBudget || 0)} ₽</div>
+                                        <div class="stat-label">Общий бюджет</div>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-3 mt-6">
+                                    <button onclick="openEditModal(${client.id})" class="flex-1 py-2 rounded-lg border border-[var(--glass-border)] hover:bg-white/10 transition">
+                                        <i data-feather="edit-2" class="w-4 h-4 inline mr-1"></i> Редактировать
+                                    </button>
+                                    <button onclick="deleteClient(${client.id})" class="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition">
+                                        <i data-feather="trash-2" class="w-4 h-4 inline mr-1"></i> Удалить
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('');
+
+                feather.replace();
+            } catch (err) {
+                console.error(err);
+
+                // Передаём полный объект ошибки в notifications
+                if (window.notifications) {
+                    window.notifications.showError(err);
+                }
             }
-
-            clientsContainer.innerHTML = clients.map(client => `
-                <div class="client-card">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <div class="client-name">${client.name}</div>
-                            <div class="client-contact">${client.contact}</div>
-                        </div>
-                        <span class="status-badge status-${client.status}">
-                            ${client.status === 'active' ? 'Активный' : 'Потенциальный'}
-                        </span>
-                    </div>
-
-                    <div class="client-stats">
-                        <div class="stat-item">
-                            <div class="stat-value">${client.campaignsCount || 0}</div>
-                            <div class="stat-label">Кампаний</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${new Intl.NumberFormat('ru-RU').format(client.totalBudget || 0)} ₽</div>
-                            <div class="stat-label">Общий бюджет</div>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-3 mt-6">
-                        <button onclick="openEditModal(${client.id})" class="flex-1 py-2 rounded-lg border border-var(--glass-border) hover:bg-white/10 transition">
-                            <i data-feather="edit-2" class="w-4 h-4 inline mr-1"></i> Редактировать
-                        </button>
-                        <button onclick="deleteClient(${client.id})" class="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition">
-                            <i data-feather="trash-2" class="w-4 h-4 inline mr-1"></i> Удалить
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-
-            feather.replace();
         }
 
         function openAddModal() {
@@ -283,28 +296,33 @@
             modal.classList.add('active');
         }
 
-        window.openEditModal = async function(clientId) {
-            const clients = await window.dataCache.getClients();
+        window.openEditModal = async function (clientId) {
+            const clients = window.dataCache.getClients();
             const client = clients.find(c => c.id === clientId);
             if (!client) return;
 
             modalTitle.textContent = 'Редактировать клиента';
             document.getElementById('edit-id').value = client.id;
-            document.getElementById('client-name').value = client.name;
-            document.getElementById('client-contact').value = client.contact;
-            document.getElementById('client-status').value = client.status;
+            document.getElementById('client-name').value = client.name || '';
+            document.getElementById('client-contact').value = client.contact || '';
+            document.getElementById('client-status').value = client.status || 'prospect';
             modal.classList.add('active');
         }
 
-        window.deleteClient = async function(clientId) {
-            if (!confirm('Удалить клиента? Все связанные кампании тоже будут удалены.')) return;
+        window.deleteClient = async function (clientId) {
+            if (!confirm('Удалить клиента? Все связанные кампании и задачи также будут удалены.')) return;
 
             try {
                 await window.dataCache.deleteClient(clientId);
-                notifications.showSuccess('Клиент удалён');
+                if (window.notifications) notifications.showSuccess('Клиент удалён');
                 renderClients();
             } catch (err) {
-                notifications.showError(err);
+                console.error(err);
+
+                // Передаём полный объект ошибки в notifications
+                if (window.notifications) {
+                    window.notifications.showError(err);
+                }
             }
         }
 
@@ -320,15 +338,20 @@
             try {
                 if (id) {
                     await window.dataCache.updateClient(Number(id), data);
-                    notifications.showSuccess('Клиент обновлён');
+                    if (window.notifications) notifications.showSuccess('Клиент обновлён');
                 } else {
                     await window.dataCache.addClient(data);
-                    notifications.showSuccess('Клиент добавлен');
+                    if (window.notifications) notifications.showSuccess('Клиент добавлен');
                 }
                 modal.classList.remove('active');
                 renderClients();
             } catch (err) {
-                notifications.showError(err);
+                console.error(err);
+
+                // Передаём полный объект ошибки в notifications
+                if (window.notifications) {
+                    window.notifications.showError(err);
+                }
             }
         });
 
