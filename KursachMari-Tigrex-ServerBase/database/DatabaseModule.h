@@ -5,9 +5,6 @@
 #include <boost/asio/strand.hpp>
 #include <pqxx/pqxx>
 #include <memory>
-#include <thread>
-#include <vector>
-#include <atomic>
 #include <iostream>
 
 class DatabaseModule : public BaseModule {
@@ -19,100 +16,111 @@ private:
     std::unique_ptr<pqxx::connection> conn_;
     std::atomic<bool> db_ready_{ false };
 
-    // SQL-скрипт создания схемы
     const std::string init_schema_sql_ = R"(
-        CREATE TABLE IF NOT EXISTS employees (
+        -- Команда агентства
+        CREATE TABLE IF NOT EXISTS team (
             id SERIAL PRIMARY KEY,
             fullname TEXT NOT NULL,
-            status TEXT NOT NULL CHECK (status IN ('hired', 'fired', 'interview')),
-            salary NUMERIC(12,2) NOT NULL DEFAULT 0,
-            penalties_count INTEGER DEFAULT 0,
-            bonuses_count INTEGER DEFAULT 0,
-            total_penalties NUMERIC(12,2) DEFAULT 0,
-            total_bonuses NUMERIC(12,2) DEFAULT 0,
+            role TEXT NOT NULL,                     -- Например: Аккаунт-менеджер, Креативный директор, Медиапланер
+            workload NUMERIC(5,2) DEFAULT 0,         -- Процент загрузки (0-100)
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
+        -- Рабочие часы / нагрузка (можно использовать для расчёта workload)
         CREATE TABLE IF NOT EXISTS work_hours (
-            employee_id INTEGER PRIMARY KEY REFERENCES employees(id) ON DELETE CASCADE,
+            employee_id INTEGER PRIMARY KEY REFERENCES team(id) ON DELETE CASCADE,
             regular_hours NUMERIC(8,2) DEFAULT 0,
             overtime NUMERIC(8,2) DEFAULT 0,
             undertime NUMERIC(8,2) DEFAULT 0,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
-        CREATE TABLE IF NOT EXISTS penalties (
+        -- Клиенты агентства
+        CREATE TABLE IF NOT EXISTS clients (
             id SERIAL PRIMARY KEY,
-            employee_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
-            reason TEXT NOT NULL,
-            amount NUMERIC(12,2) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            name TEXT NOT NULL,
+            contact TEXT,
+            status TEXT NOT NULL CHECK (status IN ('active', 'prospect', 'archived')) DEFAULT 'prospect',
+            total_budget NUMERIC(15,2) DEFAULT 0,
+            campaigns_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
-        CREATE TABLE IF NOT EXISTS bonuses (
+        -- Рекламные кампании
+        CREATE TABLE IF NOT EXISTS campaigns (
             id SERIAL PRIMARY KEY,
-            employee_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
-            note TEXT NOT NULL,
-            amount NUMERIC(12,2) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN ('planning', 'running', 'completed', 'paused')) DEFAULT 'planning',
+            budget NUMERIC(15,2) NOT NULL DEFAULT 0,
+            spent NUMERIC(15,2) DEFAULT 0,
+            start_date DATE,
+            end_date DATE,
+            roi NUMERIC(6,2),                        -- ROI только для завершённых кампаний
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
-        -- Триггеры для автоматического обновления счётчиков
-        CREATE OR REPLACE FUNCTION update_employee_penalties() RETURNS TRIGGER AS $$
-        BEGIN
-            UPDATE employees
-            SET penalties_count = penalties_count + 1,
-                total_penalties = total_penalties + NEW.amount,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = NEW.employee_id;
-            RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;
+        -- Задачи по кампаниям
+        CREATE TABLE IF NOT EXISTS tasks (
+            id SERIAL PRIMARY KEY,
+            campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+            assignee_id INTEGER REFERENCES team(id) ON DELETE SET NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            status TEXT NOT NULL CHECK (status IN ('todo', 'in_progress', 'done')) DEFAULT 'todo',
+            due_date DATE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT TIMESTAMP
+        );
 
-        DROP TRIGGER IF EXISTS trg_penalty_insert ON penalties;
-        CREATE TRIGGER trg_penalty_insert
-            AFTER INSERT ON penalties
-            FOR EACH ROW
-            EXECUTE FUNCTION update_employee_penalties();
-
-        CREATE OR REPLACE FUNCTION update_employee_bonuses() RETURNS TRIGGER AS $$
-        BEGIN
-            UPDATE employees
-            SET bonuses_count = bonuses_count + 1,
-                total_bonuses = total_bonuses + NEW.amount,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = NEW.employee_id;
-            RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;
-
-        DROP TRIGGER IF EXISTS trg_bonus_insert ON bonuses;
-        CREATE TRIGGER trg_bonus_insert
-            AFTER INSERT ON bonuses
-            FOR EACH ROW
-            EXECUTE FUNCTION update_employee_bonuses();
-
-        -- Автоматическое обновление updated_at в work_hours
-        CREATE OR REPLACE FUNCTION update_hours_timestamp() RETURNS TRIGGER AS $$
+        -- Автоматическое обновление updated_at для всех таблиц с этим полем
+        CREATE OR REPLACE FUNCTION update_updated_at_column()
+        RETURNS TRIGGER AS $$
         BEGIN
             NEW.updated_at = CURRENT_TIMESTAMP;
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
 
-        DROP TRIGGER IF EXISTS trg_hours_update ON work_hours;
-        CREATE TRIGGER trg_hours_update
+        -- Применяем триггер ко всем таблицам, где есть updated_at
+        DROP TRIGGER IF EXISTS trg_update_team ON team;
+        CREATE TRIGGER trg_update_team
+            BEFORE UPDATE ON team
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+
+        DROP TRIGGER IF EXISTS trg_update_clients ON clients;
+        CREATE TRIGGER trg_update_clients
+            BEFORE UPDATE ON clients
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+
+        DROP TRIGGER IF EXISTS trg_update_campaigns ON campaigns;
+        CREATE TRIGGER trg_update_campaigns
+            BEFORE UPDATE ON campaigns
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+
+        DROP TRIGGER IF EXISTS trg_update_tasks ON tasks;
+        CREATE TRIGGER trg_update_tasks
+            BEFORE UPDATE ON tasks
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+
+        DROP TRIGGER IF EXISTS trg_update_work_hours ON work_hours;
+        CREATE TRIGGER trg_update_work_hours
             BEFORE UPDATE ON work_hours
             FOR EACH ROW
-            EXECUTE FUNCTION update_hours_timestamp();
+            EXECUTE FUNCTION update_updated_at_column();
     )";
 
 public:
-    // Новый конструктор — принимает io_context по ссылке
     explicit DatabaseModule(
         boost::asio::io_context& ioc,
-        const std::string& conn_str = "dbname=hr_db user=postgres password=postgres host=127.0.0.1 port=5432"
+        const std::string& conn_str = "dbname=postgres user=postgres password=postgres host=127.0.0.1 port=5432"
     );
 
     ~DatabaseModule() override;
@@ -131,7 +139,5 @@ protected:
     void onShutdown() override;
 
 private:
-
-    // Асинхронная инициализация базы
     void asyncInitializeDatabase();
 };

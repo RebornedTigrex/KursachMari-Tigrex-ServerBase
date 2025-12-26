@@ -11,8 +11,8 @@ DatabaseModule::~DatabaseModule() {
 }
 
 bool DatabaseModule::onInitialize() {
-    std::cout << "[DatabaseModule] Engage asinc DB initialization...\n";
-    asyncInitializeDatabase();  // Теперь использует внешний io_context_
+    std::cout << "[DatabaseModule] Starting asynchronous DB initialization...\n";
+    asyncInitializeDatabase();
     return true;
 }
 
@@ -23,27 +23,25 @@ void DatabaseModule::asyncInitializeDatabase() {
         try {
             conn_ = std::make_unique<pqxx::connection>(db_connection_string_);
             if (!conn_->is_open()) {
-                throw std::runtime_error("DB connection failded!");
+                throw std::runtime_error("Failed to open database connection");
             }
 
-            pqxx::work txn(*conn_);// FIXME: Будет ли оно постоянно перезаписывать базу данных? Для презентации пока сгодится
+            pqxx::work txn(*conn_);
             txn.exec(init_schema_sql_);
             txn.commit();
 
             db_ready_.store(true);
-            std::cout << "[DatabaseModule] DataBase ready!\n";
+            std::cout << "[DatabaseModule] Database schema initialized successfully. Ready!\n";
         }
         catch (const std::exception& e) {
-            std::cerr << "[DatabaseModule] DataBase initialisation Erorr: " << e.what() << std::endl;
+            std::cerr << "[DatabaseModule] Database initialization error: " << e.what() << std::endl;
             db_ready_.store(false);
         }
         });
-}   
+}
 
 void DatabaseModule::onShutdown() {
-    std::cout << "[DatabaseModule] Shutdowning Databese module...\n";
-
-    // Соединение автоматически закроется в деструкторе conn_
+    std::cout << "[DatabaseModule] Shutting down database module...\n";
     conn_.reset();
     db_ready_.store(false);
 }

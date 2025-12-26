@@ -4,6 +4,9 @@
 #include "ApiProcessor.h"
 
 #include <string>
+#include <boost/beast/http.hpp>
+
+namespace http = boost::beast::http;
 
 void printConnectionInfo(tcp::socket& socket) {
     try {
@@ -21,51 +24,99 @@ void printConnectionInfo(tcp::socket& socket) {
 }
 
 void CreateAPIHandlers(RequestHandler* module, ApiProcessor* apiProcessor) {
-    // Основной эндпоинт для всех данных — как ожидает фронт
+    // Основной эндпоинт — возвращает все данные для фронтенда
     module->addRouteHandler("/api/all-data", [apiProcessor](const sRequest& req, sResponce& res) {
+        if (req.method() != http::verb::get) {
+            res.result(http::status::method_not_allowed);
+            res.set(http::field::content_type, "text/plain");
+            res.body() = "Method Not Allowed. Use GET.";
+            return;
+        }
         apiProcessor->handleGetAllData(req, res);
         });
 
-    // Список сотрудников (можно оставить как есть, но лучше сделать отдельный обработчик позже)
-    module->addRouteHandler("/api/employees", [apiProcessor](const sRequest& req, sResponce& res) {
+    // ==================== CLIENTS ====================
+    module->addRouteHandler("/api/clients", [apiProcessor](const sRequest& req, sResponce& res) {
         if (req.method() == http::verb::post) {
-            apiProcessor->handleAddEmployee(req, res);
-        }
-        else if (req.method() == http::verb::get) {
-            apiProcessor->handleGetAllData(req, res); // временно ок — фронт пока не использует отдельно
+            apiProcessor->handleAddClient(req, res);
         }
         else {
             res.result(http::status::method_not_allowed);
         }
         });
 
-    module->addDynamicRouteHandler("/api/employees/\\d+(?:/)?", [apiProcessor](const sRequest& req, sResponce& res) {
+    module->addDynamicRouteHandler("/api/clients/\\d+(?:/)?", [apiProcessor](const sRequest& req, sResponce& res) {
         if (req.method() == http::verb::put) {
-            apiProcessor->handleUpdateEmployee(req, res);
+            apiProcessor->handleUpdateClient(req, res);
+        }
+        else if (req.method() == http::verb::delete_) {
+            apiProcessor->handleDeleteClient(req, res);
         }
         else {
             res.result(http::status::method_not_allowed);
         }
         });
-    module->addDynamicRouteHandler("/api/hours/\\d+(?:/)?", [apiProcessor](const sRequest& req, sResponce& res) {
+
+    // ==================== CAMPAIGNS ====================
+    module->addRouteHandler("/api/campaigns", [apiProcessor](const sRequest& req, sResponce& res) {
         if (req.method() == http::verb::post) {
-            apiProcessor->handleAddHours(req, res);
+            apiProcessor->handleAddCampaign(req, res);
         }
         else {
             res.result(http::status::method_not_allowed);
         }
         });
-    module->addDynamicRouteHandler("/api/employees/\\d+/penalties(?:/)?", [apiProcessor](const sRequest& req, sResponce& res) {
-        if (req.method() == http::verb::post) {
-            apiProcessor->handleAddPenalty(req, res);
+
+    module->addDynamicRouteHandler("/api/campaigns/\\d+(?:/)?", [apiProcessor](const sRequest& req, sResponce& res) {
+        if (req.method() == http::verb::put) {
+            apiProcessor->handleUpdateCampaign(req, res);
+        }
+        else if (req.method() == http::verb::delete_) {
+            apiProcessor->handleDeleteCampaign(req, res);
         }
         else {
             res.result(http::status::method_not_allowed);
         }
         });
-    module->addDynamicRouteHandler("/api/employees/\\d+/bonuses(?:/)?", [apiProcessor](const sRequest& req, sResponce& res) {
+
+    // ==================== TASKS ====================
+    module->addRouteHandler("/api/tasks", [apiProcessor](const sRequest& req, sResponce& res) {
         if (req.method() == http::verb::post) {
-            apiProcessor->handleAddBonus(req, res);
+            apiProcessor->handleAddTask(req, res);
+        }
+        else {
+            res.result(http::status::method_not_allowed);
+        }
+        });
+
+    module->addDynamicRouteHandler("/api/tasks/\\d+(?:/)?", [apiProcessor](const sRequest& req, sResponce& res) {
+        if (req.method() == http::verb::put) {
+            apiProcessor->handleUpdateTask(req, res);
+        }
+        else if (req.method() == http::verb::delete_) {
+            apiProcessor->handleDeleteTask(req, res);
+        }
+        else {
+            res.result(http::status::method_not_allowed);
+        }
+        });
+
+    // ==================== TEAM ====================
+    module->addRouteHandler("/api/team", [apiProcessor](const sRequest& req, sResponce& res) {
+        if (req.method() == http::verb::post) {
+            apiProcessor->handleAddTeamMember(req, res);
+        }
+        else {
+            res.result(http::status::method_not_allowed);
+        }
+        });
+
+    module->addDynamicRouteHandler("/api/team/\\d+(?:/)?", [apiProcessor](const sRequest& req, sResponce& res) {
+        if (req.method() == http::verb::put) {
+            apiProcessor->handleUpdateTeamMember(req, res);
+        }
+        else if (req.method() == http::verb::delete_) {
+            apiProcessor->handleDeleteTeamMember(req, res);
         }
         else {
             res.result(http::status::method_not_allowed);
@@ -74,6 +125,7 @@ void CreateAPIHandlers(RequestHandler* module, ApiProcessor* apiProcessor) {
 }
 
 void CreateNewHandlers(RequestHandler* module, std::string staticFolder) {
+    // Тестовый маршрут
     module->addRouteHandler("/test", [](const sRequest& req, sResponce& res) {
         if (req.method() != http::verb::get) {
             res.result(http::status::method_not_allowed);
@@ -82,9 +134,10 @@ void CreateNewHandlers(RequestHandler* module, std::string staticFolder) {
             return;
         }
         res.set(http::field::content_type, "text/plain");
-        res.body() = "RequestHandler Module Scaling Test.\nAlso checking support for the Russian language.";
+        res.body() = "Advertising Agency MVP Backend is running!\nРусский язык тоже поддерживается.";
         res.result(http::status::ok);
         });
 
-    module->addRouteHandler("/*", [](const sRequest& req, sResponce& res) {});
+    module->addRouteHandler("/*", [](const sRequest& req, sResponce& res) {
+        });
 }

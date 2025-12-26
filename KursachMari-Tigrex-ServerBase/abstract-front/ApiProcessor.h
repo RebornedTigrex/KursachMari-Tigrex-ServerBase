@@ -4,11 +4,6 @@
 #include <pqxx/pqxx>
 #include <string>
 #include <optional>
-#include <vector>
-#include <regex>
-
-#include <boost/system/error_code.hpp>  
-#include <pqxx/params>                  
 
 #include "macros.h"  // Для http::request, http::response и т.д.
 
@@ -27,10 +22,11 @@ private:
         http::status status,
         const std::string& message);
 
-    bj::object employeeToJson(const pqxx::row& row);
-    bj::object hoursToJson(const pqxx::row& row);
-    bj::object penaltyToJson(const pqxx::row& row);
-    bj::object bonusToJson(const pqxx::row& row);
+    // Конвертеры в JSON для фронтенда
+    bj::object clientToJson(const pqxx::row& row);
+    bj::object campaignToJson(const pqxx::row& row);
+    bj::object taskToJson(const pqxx::row& row);
+    bj::object teamMemberToJson(const pqxx::row& row);
 
     std::optional<std::string> getQueryParam(const std::string& target, const std::string& param_name);
     std::optional<int> parseIdFromPath(const std::string& path, const std::string& prefix);
@@ -38,10 +34,24 @@ private:
 public:
     explicit ApiProcessor(DatabaseModule* db_module);
 
-    void handleGetAllData(const http::request<http::string_body>& req, http::response<http::string_body>& res);
-    void handleAddEmployee(const http::request<http::string_body>& req, http::response<http::string_body>& res);
-    void handleUpdateEmployee(const http::request<http::string_body>& req, http::response<http::string_body>& res);
-    void handleAddHours(const http::request<http::string_body>& req, http::response<http::string_body>& res);
-    void handleAddPenalty(const http::request<http::string_body>& req, http::response<http::string_body>& res);
-    void handleAddBonus(const http::request<http::string_body>& req, http::response<http::string_body>& res);
+    // Основной эндпоинт, который использует фронтенд
+    void handleGetAllData(const http::request<http::string_body>& req,
+        http::response<http::string_body>& res);
+
+    // Заготовки для CRUD (реализуем на следующем шаге)
+    void handleAddClient(const http::request<http::string_body>& req, http::response<http::string_body>& res);
+    void handleUpdateClient(const http::request<http::string_body>& req, http::response<http::string_body>& res);
+    void handleDeleteClient(const http::request<http::string_body>& req, http::response<http::string_body>& res);
+
+    void handleAddCampaign(const http::request<http::string_body>& req, http::response<http::string_body>& res);
+    void handleUpdateCampaign(const http::request<http::string_body>& req, http::response<http::string_body>& res);
+    void handleDeleteCampaign(const http::request<http::string_body>& req, http::response<http::string_body>& res);
+
+    void handleAddTask(const http::request<http::string_body>& req, http::response<http::string_body>& res);
+    void handleUpdateTask(const http::request<http::string_body>& req, http::response<http::string_body>& res);
+    void handleDeleteTask(const http::request<http::string_body>& req, http::response<http::string_body>& res);
+
+    void handleAddTeamMember(const http::request<http::string_body>& req, http::response<http::string_body>& res);
+    void handleUpdateTeamMember(const http::request<http::string_body>& req, http::response<http::string_body>& res);
+    void handleDeleteTeamMember(const http::request<http::string_body>& req, http::response<http::string_body>& res);
 };
